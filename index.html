@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ma'had Miftah al-'Ilm - Score Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-warm: #FBF9F5;
+    --card-bg: #FFFFFF;
+    --emerald-dark: #0F4C3A;
+    --emerald-light: #1A6B53;
+    --gold-ochre: #C59849;
+    --gold-soft: #F6EFE0;
+    --text-dark: #1C2826;
+    --text-muted: #6B7280;
+    --border-color: #E6E1D5;
+    --radius: 12px;
+    --danger: #B3261E;
+    --danger-soft: #FBEAE9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg-warm: #121815; --card-bg: #1A211D; --emerald-dark: #4ADE9E; --emerald-light: #7EE7B8;
+      --gold-ochre: #E0B15E; --gold-soft: #2A2418; --text-dark: #EFEDE6; --text-muted: #9AA39D; --border-color: #2C332E;
+      --danger-soft: #2A1917;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg-warm: #121815; --card-bg: #1A211D; --emerald-dark: #4ADE9E; --emerald-light: #7EE7B8;
+    --gold-ochre: #E0B15E; --gold-soft: #2A2418; --text-dark: #EFEDE6; --text-muted: #9AA39D; --border-color: #2C332E;
+    --danger-soft: #2A1917;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
+  body { background-color: var(--bg-warm); color: var(--text-dark); padding-bottom: 60px; }
+  svg.icon { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: -4px; margin-right: 6px; flex-shrink: 0; }
+  svg.icon.sm { width: 14px; height: 14px; margin-right: 4px; }
+
+  header { position: relative; background-color: var(--card-bg); border-bottom: 3px solid var(--gold-ochre); text-align: center; padding: 35px 20px 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+  .bismillah { font-family: 'Amiri', serif; font-size: 1.6rem; color: var(--gold-ochre); margin-bottom: 8px; }
+  header h1 { font-family: 'Amiri', serif; font-size: 2.2rem; color: var(--emerald-dark); font-weight: 700; margin-bottom: 4px; direction: rtl; }
+  header h2 { font-size: 1rem; color: var(--emerald-light); font-weight: 600; letter-spacing: 0.5px; }
+
+  .teacher-tag {
+    position: absolute; top: 14px; right: 14px; background: var(--bg-warm); color: var(--text-muted);
+    border: 1px solid var(--border-color); border-radius: 20px; padding: 5px 12px; font-size: 0.72rem;
+    font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s;
+  }
+  .teacher-tag:hover { border-color: var(--gold-ochre); color: var(--gold-ochre); }
+  .teacher-tag.on { background: var(--emerald-dark); color: var(--bg-warm); border-color: var(--emerald-dark); }
+  .teacher-tag svg.icon { width: 13px; height: 13px; margin-right: 3px; }
+
+  .nav-tabs { display: flex; justify-content: center; gap: 10px; margin: 25px auto; max-width: 620px; padding: 0 15px; flex-wrap: wrap; }
+  .tab-btn { flex: 1; min-width: 140px; padding: 12px 16px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); font-weight: 600; border-radius: var(--radius); cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; }
+  .tab-btn.active { background: var(--emerald-dark); color: var(--bg-warm); border-color: var(--emerald-dark); box-shadow: 0 4px 12px rgba(15,76,58,0.25); }
+  .tab-btn.active svg.icon { stroke: var(--bg-warm); }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 0 15px; }
+
+  .search-box { width: 100%; padding: 14px 18px; border: 1.5px solid var(--border-color); border-radius: var(--radius); font-size: 1rem; margin-bottom: 20px; background: var(--card-bg); color: var(--text-dark); outline: none; }
+  .search-box:focus { border-color: var(--emerald-light); }
+
+  .status-banner { padding: 10px 16px; border-radius: var(--radius); font-size: 0.85rem; margin-bottom: 16px; background: var(--gold-soft); color: var(--gold-ochre); border: 1px solid rgba(197,152,73,0.3); text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .status-banner.error { background: rgba(179,38,30,0.08); color: var(--danger); border-color: rgba(179,38,30,0.25); }
+
+  .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
+  .student-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 18px 20px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; }
+  .student-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,76,58,0.08); border-color: var(--gold-ochre); }
+  .student-info h3 { font-size: 1rem; color: var(--emerald-dark); font-weight: 600; }
+  .student-info span { font-size: 0.8rem; color: var(--text-muted); }
+  .view-badge { background: var(--gold-soft); color: var(--gold-ochre); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(197,152,73,0.3); white-space: nowrap; }
+
+  .leaderboard-list { display: flex; flex-direction: column; gap: 12px; }
+  .leader-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .leader-rank { font-weight: 700; font-size: 1.1rem; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--gold-soft); flex-shrink: 0; }
+  .rank-1 { background: #FEF3C7; color: #B45309; border: 1px solid #F59E0B; }
+  .rank-2 { background: #E2E8F0; color: #475569; border: 1px solid #94A3B8; }
+  .rank-3 { background: #FFEDD5; color: #C2410C; border: 1px solid #F97316; }
+  .leader-name { flex: 1; margin: 0 15px; font-weight: 600; color: var(--emerald-dark); }
+  .leader-score { font-size: 1.2rem; font-weight: 700; color: var(--gold-ochre); }
+
+  .table-wrapper { overflow-x: auto; background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: center; }
+  th, td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+  th { background: var(--emerald-dark); color: var(--bg-warm); font-weight: 500; position: sticky; top: 0; }
+  td.name-cell { text-align: left; font-weight: 600; color: var(--emerald-dark); }
+  td.total-cell { font-weight: 700; color: var(--gold-ochre); }
+
+  /* Teacher panel */
+  .teacher-panel { display: flex; flex-direction: column; gap: 18px; }
+  .panel-section { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 18px; }
+  .panel-section h4 { font-size: 0.95rem; color: var(--emerald-dark); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; }
+  .add-student-form { display: flex; gap: 10px; flex-wrap: wrap; }
+  .add-student-form input { flex: 1; min-width: 200px; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: var(--bg-warm); color: var(--text-dark); }
+  .add-student-form input:focus { border-color: var(--emerald-light); outline: none; }
+  .add-student-form button { background: var(--emerald-dark); color: var(--bg-warm); border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; white-space: nowrap; }
+  .menu-toggle { cursor: pointer; justify-content: space-between; }
+  .menu-chevron { font-size: 0.8rem; color: var(--text-muted); }
+  .menu-body { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border-color); }
+  .menu-body.open { display: block; }
+  .list-subhead { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin: 18px 0 10px; }
+  .list-subhead:first-child { margin-top: 0; }
+
+  .entry-list { display: flex; flex-direction: column; gap: 10px; }
+  .entry-row { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 14px 16px; }
+  .entry-row.inactive { opacity: 0.6; border-style: dashed; }
+  .entry-row-head { display: flex; align-items: center; justify-content: space-between; cursor: pointer; gap: 10px; }
+  .entry-row-name { font-weight: 600; color: var(--emerald-dark); font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+  .inactive-pill { font-size: 0.65rem; background: var(--border-color); color: var(--text-muted); padding: 2px 8px; border-radius: 10px; font-weight: 700; letter-spacing: 0.3px; }
+  .entry-row-sn { font-size: 0.78rem; color: var(--text-muted); }
+  .entry-row-total { font-size: 0.9rem; font-weight: 700; color: var(--gold-ochre); white-space: nowrap; }
+  .entry-body { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border-color); }
+  .entry-body.open { display: block; }
+  .day-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
+  .day-field label { display: block; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; }
+  .day-field input { width: 100%; padding: 8px 6px; border: 1.5px solid var(--border-color); border-radius: 8px; text-align: center; font-size: 0.9rem; font-weight: 600; color: var(--text-dark); background: var(--bg-warm); }
+  .day-field input:focus { border-color: var(--emerald-light); outline: none; }
+  .day-field input.invalid { border-color: var(--danger); }
+  .bonus-row { display: flex; align-items: center; gap: 10px; background: var(--gold-soft); border: 1px solid rgba(197,152,73,0.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .bonus-row label { font-size: 0.8rem; color: var(--gold-ochre); font-weight: 600; flex: 1; }
+  .bonus-row input { width: 70px; padding: 6px; border: 1.5px solid rgba(197,152,73,0.4); border-radius: 6px; text-align: center; font-weight: 700; background: var(--card-bg); color: var(--text-dark); }
+  .bonus-note { font-size: 0.72rem; color: var(--text-muted); margin-top: -4px; margin-bottom: 10px; }
+  .entry-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .entry-footer-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .save-btn { background: var(--emerald-dark); color: var(--bg-warm); border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; }
+  .save-btn svg.icon { stroke: var(--bg-warm); margin-right: 6px; }
+  .save-btn:disabled { opacity: 0.5; cursor: default; }
+  .ghost-btn { background: none; border: 1px solid var(--border-color); color: var(--text-muted); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; }
+  .ghost-btn:hover { border-color: var(--gold-ochre); color: var(--gold-ochre); }
+  .danger-btn { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; }
+  .danger-btn:hover { background: var(--danger-soft); }
+  .save-hint { font-size: 0.75rem; color: var(--text-muted); }
+  .save-hint.ok { color: var(--emerald-light); }
+  .save-hint.err { color: var(--danger); }
+
+  .lock-notice { text-align: center; padding: 50px 20px; color: var(--text-muted); background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); }
+  .lock-notice svg.icon { width: 34px; height: 34px; stroke: var(--gold-ochre); margin: 0 0 14px; display: block; margin-left: auto; margin-right: auto; }
+  .lock-notice b { color: var(--emerald-dark); }
+  .pin-form { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+  .pin-form input { padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 1rem; text-align: center; letter-spacing: 4px; width: 140px; background: var(--bg-warm); color: var(--text-dark); }
+  .pin-form input:focus { border-color: var(--emerald-light); outline: none; }
+  .pin-form button { background: var(--emerald-dark); color: var(--bg-warm); border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .pin-error { color: var(--danger); font-size: 0.8rem; margin-top: 10px; }
+
+  .confirm-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,76,58,0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1100; padding: 15px; }
+  .confirm-box { background: var(--card-bg); border-radius: 14px; max-width: 380px; width: 100%; padding: 22px; text-align: center; border-top: 5px solid var(--danger); }
+  .confirm-box h4 { color: var(--text-dark); font-size: 1.05rem; margin-bottom: 8px; }
+  .confirm-box p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 18px; }
+  .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,76,58,0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 15px; }
+  .modal-content { background: var(--card-bg); border-radius: 16px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 20px 30px rgba(0,0,0,0.15); position: relative; border-top: 5px solid var(--gold-ochre); }
+  .close-btn { position: absolute; top: 16px; right: 20px; font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-muted); }
+  .modal-header { margin-bottom: 18px; text-align: center; }
+  .modal-header h3 { font-size: 1.3rem; color: var(--emerald-dark); font-weight: 700; }
+  .modal-header p { font-size: 0.85rem; color: var(--text-muted); }
+  .score-summary-box { background: var(--gold-soft); border-radius: var(--radius); padding: 15px; text-align: center; margin-bottom: 20px; border: 1px solid rgba(197,152,73,0.3); }
+  .score-summary-box .total-val { font-size: 2.2rem; font-weight: 700; color: var(--emerald-dark); }
+  .score-summary-box .total-lbl { font-size: 0.8rem; color: var(--gold-ochre); text-transform: uppercase; font-weight: 600; letter-spacing: 1px; }
+  .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+  .score-item { background: var(--bg-warm); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); }
+  .score-item .day { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; }
+  .score-item .val { font-size: 1rem; font-weight: 600; color: var(--emerald-dark); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="teacher-tag" id="teacherTag"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Teacher</button>
+  <div class="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
+  <h1>معهد مفتاح العلم</h1>
+  <h2>Ma'had Miftah al-'Ilm &bull; Score Portal</h2>
+</header>
+
+<div class="nav-tabs" id="navTabs">
+  <button class="tab-btn active" data-tab="directory"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Directory</button>
+  <button class="tab-btn" data-tab="leaderboard"><svg class="icon" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4a2 2 0 0 0 0 4h1M17 6h3a2 2 0 0 1 0 4h-1"/></svg>Leaderboard</button>
+  <button class="tab-btn" data-tab="overview"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>Full Sheet</button>
+  <button class="tab-btn" data-tab="manage" id="manageTabBtn" style="display:none;"><svg class="icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>Manage Students</button>
+</div>
+
+<div class="container">
+  <div id="statusArea"></div>
+
+  <div id="tab-directory" class="tab-content active">
+    <input type="text" id="search" class="search-box" placeholder="Search student name...">
+    <div id="studentGrid" class="student-grid"></div>
+  </div>
+
+  <div id="tab-leaderboard" class="tab-content">
+    <div id="leaderboardList" class="leaderboard-list"></div>
+  </div>
+
+  <div id="tab-overview" class="tab-content">
+    <div class="table-wrapper">
+      <table>
+        <thead><tr id="tableHeader"></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-manage" class="tab-content">
+    <div id="manageArea"></div>
+  </div>
+</div>
+
+<div id="scoreModal" class="modal-overlay">
+  <div class="modal-content">
+    <button class="close-btn" id="modalClose">&times;</button>
+    <div class="modal-header">
+      <h3 id="modalName">Student Name</h3>
+      <p id="modalSN">S/N: --</p>
+    </div>
+    <div class="score-summary-box">
+      <div class="total-val" id="modalTotal">0</div>
+      <div class="total-lbl">Total Accumulated Score (max 100)</div>
+    </div>
+    <div class="score-grid" id="modalScoreGrid"></div>
+    <div id="modalEditWrap" style="display:none;"></div>
+  </div>
+</div>
+
+<div id="scoreEditModal" class="modal-overlay">
+  <div class="modal-content">
+    <button class="close-btn" id="scoreEditClose">&times;</button>
+    <div class="modal-header">
+      <h3 id="editModalName">Student Name</h3>
+      <p id="editModalTotal">Total: 0 / 100</p>
+    </div>
+
+    <div id="editPickerView">
+      <p style="text-align:center; font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Select a day to edit</p>
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;" id="editDayDots"></div>
+      <div class="save-hint" id="editPickerHint" style="margin-top:14px; text-align:center;"></div>
+    </div>
+
+    <div id="editFormView" style="display:none;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px;">
+        <button class="ghost-btn" id="editBackToDays">&larr; Days</button>
+        <div style="font-weight:700; color:var(--emerald-dark); font-size:1.05rem;" id="editDayLabel">Day 1</div>
+        <span style="width:64px;"></span>
+      </div>
+      <div class="day-grid" style="grid-template-columns: 1fr; gap:12px;">
+        <div class="day-field">
+          <label>Score (0-<span id="editDayMaxLabel">10</span>)</label>
+          <input type="number" min="0" max="10" step="1" id="editDayScoreInput" placeholder="0-10">
+        </div>
+        <div class="day-field">
+          <label>Bonus units for this day (each = <span id="editBonusValLabel">2</span> pts)</label>
+          <input type="number" min="0" step="1" id="editDayBonusInput" placeholder="0">
+        </div>
+      </div>
+      <div class="entry-footer" style="margin-top:16px;">
+        <button class="save-btn" id="editSaveBtn" style="width:100%; justify-content:center;"><svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Day <span id="editSaveDayLabel">1</span></button>
+      </div>
+      <div class="save-hint" id="editHint" style="margin-top:10px; text-align:center;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="confirmOverlay" class="confirm-overlay">
+  <div class="confirm-box">
+    <h4 id="confirmTitle">Are you sure?</h4>
+    <p id="confirmBody">This cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="ghost-btn" id="confirmCancel">Cancel</button>
+      <button class="danger-btn" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://vnqgxopexirycynuybyc.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_7UKp2chrOS99hEEfICCqUQ_eyr-_cef";
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const DAY_COUNT = 10;
+const DAY_MAX = 10;
+const BONUS_UNIT_VALUE = 2;
+const MAX_TOTAL = 100;
+const TEACHER_SESSION_KEY = "mahad_teacher_unlocked";
+
+let allStudents = [];   // everything from Supabase (active + inactive)
+let students = [];      // active only — used by public views
+let entryOpenId = null;
+let renamingId = null;   // which student's name is currently being edited inline
+let teacherUnlocked = sessionStorage.getItem(TEACHER_SESSION_KEY) === "1";
+let pendingConfirm = null;
+let seedingInProgress = false;
+let teacherPin = "2026"; // fallback until loaded from Supabase
+let editingStudentId = null; // which student the score-edit wizard is open for
+let editingDayIndex = null;  // which day (0-9) the wizard is on; null = day-picker screen
+
+function computeTotal(days, bonusUnits) {
+  const daySum = days.reduce((acc, d) => acc + (typeof d === 'number' ? d : 0), 0);
+  const bonusSum = bonusUnits.reduce((acc, b) => acc + (typeof b === 'number' ? b : 0), 0) * BONUS_UNIT_VALUE;
+  return Math.min(MAX_TOTAL, daySum + bonusSum);
+}
+
+function showStatus(msg, isError) {
+  document.getElementById('statusArea').innerHTML = `<div class="status-banner${isError ? ' error' : ''}">${iconInfo()}${msg}</div>`;
+}
+function clearStatus() { document.getElementById('statusArea').innerHTML = ''; }
+
+// Postgres integer[] can't hold null mixed with numbers cleanly via the JS
+// client here, so "unset" is stored as -1 and translated to null in the
+// app; the UI never shows -1, only blank. Same convention for bonus_units.
+function daysToDb(days) {
+  return days.map(d => (typeof d === 'number' ? d : -1));
+}
+function daysFromDb(days) {
+  return (Array.isArray(days) ? days : Array(DAY_COUNT).fill(-1)).map(d => (typeof d === 'number' && d >= 0 ? d : null));
+}
+
+function normalizeStudent(row) {
+  const days = daysFromDb(row.days).length === DAY_COUNT ? daysFromDb(row.days) : Array(DAY_COUNT).fill(null);
+  const bonusRaw = daysFromDb(row.bonus_units);
+  const bonusUnits = bonusRaw.length === DAY_COUNT ? bonusRaw.map(b => (b === null ? 0 : b)) : Array(DAY_COUNT).fill(0);
+  return {
+    id: row.id, sn: typeof row.sn === 'number' ? row.sn : 0, name: row.name || 'Unknown',
+    days, bonusUnits, active: row.active !== false, total: computeTotal(days, bonusUnits)
+  };
+}
+
+function nextSN() {
+  return allStudents.reduce((max, s) => Math.max(max, s.sn), 0) + 1;
+}
+
+async function loadTeacherPin() {
+  const { data, error } = await sb.from('app_settings').select('value').eq('key', 'teacher_pin').maybeSingle();
+  if (!error && data && data.value) teacherPin = data.value;
+}
+
+async function loadStudents() {
+  const { data, error } = await sb.from('students').select('*').order('sn', { ascending: true });
+  if (error) {
+    showStatus('Could not load scores: ' + error.message + '. Check your connection and reload.', true);
+    return;
+  }
+  allStudents = data.map(normalizeStudent);
+  students = allStudents.filter(s => s.active);
+  clearStatus();
+  renderAll();
+}
+
+function subscribe() {
+  loadTeacherPin();
+  loadStudents();
+  // Live updates: Supabase Realtime pushes any insert/update/delete on this table.
+  sb.channel('students-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+      loadStudents();
+    })
+    .subscribe();
+}
+
+function renderAll() {
+  renderDirectory(); renderLeaderboard(); renderTable();
+  const activeId = document.querySelector('.tab-content.active').id;
+  if (activeId === 'tab-manage' && !seedingInProgress) renderManageTab();
+}
+
+function renderDirectory() {
+  const grid = document.getElementById('studentGrid');
+  const term = (document.getElementById('search').value || '').toLowerCase();
+  const filtered = students.filter(s => s.name.toLowerCase().includes(term));
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-state">${students.length === 0 ? 'No students yet.' : 'No matching students.'}</div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(s => `
+    <div class="student-card" data-id="${escapeAttr(s.id)}">
+      <div class="student-info"><h3>${escapeHtml(s.name)}</h3><span>S/N: ${s.sn}</span></div>
+      <div class="view-badge">${s.total} / 100</div>
+    </div>`).join('');
+  grid.querySelectorAll('.student-card').forEach(card => card.addEventListener('click', () => openStudentModal(card.dataset.id)));
+}
+
+function openStudentModal(id) {
+  const s = students.find(x => x.id === id) || allStudents.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('modalName').textContent = s.name;
+  document.getElementById('modalSN').textContent = `Student S/N: ${s.sn}`;
+  document.getElementById('modalTotal').textContent = s.total;
+  const grid = document.getElementById('modalScoreGrid');
+  const html = s.days.map((score, i) => {
+    const bonus = s.bonusUnits[i] || 0;
+    const bonusNote = bonus > 0 ? ` <span style="color:var(--gold-ochre); font-weight:600;">+${bonus * BONUS_UNIT_VALUE}</span>` : '';
+    return `
+    <div class="score-item"><div class="day">Day ${i + 1}</div><div class="val">${score !== null ? score : '-'}${bonusNote}</div></div>`;
+  }).join('');
+  grid.innerHTML = html;
+
+  const editBtnWrap = document.getElementById('modalEditWrap');
+  if (teacherUnlocked) {
+    editBtnWrap.style.display = 'block';
+    editBtnWrap.innerHTML = `<button class="save-btn" id="modalEditBtn" style="width:100%; justify-content:center; margin-top:14px;"><svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Edit scores</button>`;
+    document.getElementById('modalEditBtn').addEventListener('click', () => {
+      closeModal();
+      openScoreEditor(s.id);
+    });
+  } else {
+    editBtnWrap.style.display = 'none';
+    editBtnWrap.innerHTML = '';
+  }
+
+  document.getElementById('scoreModal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('scoreModal').style.display = 'none'; }
+
+// ---------- Score edit wizard (day picker, then one day at a time, teacher only) ----------
+function openScoreEditor(id) {
+  const s = allStudents.find(x => x.id === id);
+  if (!s) return;
+  editingStudentId = id;
+  editingDayIndex = null;
+  renderScoreEditor();
+  const pickerHint = document.getElementById('editPickerHint');
+  if (pickerHint) { pickerHint.textContent = ''; pickerHint.className = 'save-hint'; }
+  document.getElementById('scoreEditModal').style.display = 'flex';
+}
+function closeScoreEditor() {
+  document.getElementById('scoreEditModal').style.display = 'none';
+  editingStudentId = null;
+  editingDayIndex = null;
+}
+
+function renderScoreEditor() {
+  const s = allStudents.find(x => x.id === editingStudentId);
+  if (!s) { closeScoreEditor(); return; }
+  document.getElementById('editModalName').textContent = s.name;
+  document.getElementById('editModalTotal').textContent = `Total: ${s.total} / 100`;
+
+  if (editingDayIndex === null) {
+    renderDayPicker(s);
+    return;
+  }
+
+  document.getElementById('editPickerView').style.display = 'none';
+  document.getElementById('editFormView').style.display = 'block';
+
+  document.getElementById('editDayLabel').textContent = `Day ${editingDayIndex + 1}`;
+  document.getElementById('editSaveDayLabel').textContent = editingDayIndex + 1;
+  document.getElementById('editDayMaxLabel').textContent = DAY_MAX;
+  document.getElementById('editBonusValLabel').textContent = BONUS_UNIT_VALUE;
+  const scoreVal = s.days[editingDayIndex];
+  const bonusVal = s.bonusUnits[editingDayIndex] || 0;
+  document.getElementById('editDayScoreInput').value = scoreVal !== null ? scoreVal : '';
+  document.getElementById('editDayBonusInput').value = bonusVal || '';
+  document.getElementById('editHint').textContent = '';
+  document.getElementById('editHint').className = 'save-hint';
+}
+
+function renderDayPicker(s) {
+  document.getElementById('editFormView').style.display = 'none';
+  document.getElementById('editPickerView').style.display = 'block';
+
+  const dots = document.getElementById('editDayDots');
+  dots.innerHTML = Array.from({ length: DAY_COUNT }, (_, i) => {
+    const has = s.days[i] !== null;
+    return `<button type="button" data-day-dot="${i}" style="width:38px; height:38px; border-radius:50%; border:1.5px solid var(--border-color); background:${has ? 'var(--gold-soft)' : 'var(--card-bg)'}; color:var(--text-muted); font-size:0.8rem; font-weight:700; cursor:pointer;">${i + 1}</button>`;
+  }).join('');
+  dots.querySelectorAll('[data-day-dot]').forEach(btn => {
+    btn.addEventListener('click', () => { editingDayIndex = Number(btn.dataset.dayDot); renderScoreEditor(); });
+  });
+}
+
+async function saveEditorDay() {
+  const s = allStudents.find(x => x.id === editingStudentId);
+  if (!s) return;
+  const hint = document.getElementById('editHint');
+  const scoreInput = document.getElementById('editDayScoreInput');
+  const bonusInput = document.getElementById('editDayBonusInput');
+
+  let hasError = false;
+  const sv = scoreInput.value;
+  let scoreNum = null;
+  if (sv !== '') {
+    scoreNum = Number(sv);
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > DAY_MAX) { hasError = true; scoreInput.classList.add('invalid'); }
+    else scoreInput.classList.remove('invalid');
+  } else {
+    scoreInput.classList.remove('invalid');
+  }
+  const bv = bonusInput.value;
+  let bonusNum = 0;
+  if (bv !== '') {
+    bonusNum = Number(bv);
+    if (isNaN(bonusNum) || bonusNum < 0) { hasError = true; bonusInput.classList.add('invalid'); }
+    else bonusInput.classList.remove('invalid');
+  } else {
+    bonusInput.classList.remove('invalid');
+  }
+
+  if (hasError) {
+    hint.textContent = `Fix the highlighted fields (0-${DAY_MAX} for score, bonus \u2265 0).`;
+    hint.className = 'save-hint err';
+    return;
+  }
+
+  const newDays = [...s.days];
+  const newBonus = [...s.bonusUnits];
+  newDays[editingDayIndex] = scoreNum;
+  newBonus[editingDayIndex] = bonusNum;
+
+  const btn = document.getElementById('editSaveBtn');
+  btn.disabled = true;
+  hint.textContent = 'Saving...';
+  hint.className = 'save-hint';
+  try {
+    const { error } = await sb.from('students').update({ days: daysToDb(newDays), bonus_units: daysToDb(newBonus) }).eq('id', s.id);
+    if (error) throw error;
+    s.days = newDays;
+    s.bonusUnits = newBonus;
+    s.total = computeTotal(newDays, newBonus);
+    students = allStudents.filter(x => x.active);
+    renderDirectory(); renderLeaderboard(); renderTable();
+    const savedDay = editingDayIndex + 1;
+    editingDayIndex = null;
+    renderScoreEditor();
+    const pickerHint = document.getElementById('editPickerHint');
+    if (pickerHint) { pickerHint.textContent = `Day ${savedDay} saved.`; pickerHint.className = 'save-hint ok'; }
+  } catch (e) {
+    hint.textContent = 'Could not save: ' + (e && e.message ? e.message : 'try again.');
+    hint.className = 'save-hint err';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderLeaderboard() {
+  const list = document.getElementById('leaderboardList');
+  if (students.length === 0) { list.innerHTML = `<div class="empty-state">No students yet.</div>`; return; }
+  const sorted = [...students].sort((a, b) => b.total - a.total);
+  list.innerHTML = sorted.map((s, idx) => {
+    let badgeClass = '', rankDisplay = idx + 1;
+    if (idx === 0) { badgeClass = 'rank-1'; rankDisplay = medalIcon('#B45309'); }
+    else if (idx === 1) { badgeClass = 'rank-2'; rankDisplay = medalIcon('#475569'); }
+    else if (idx === 2) { badgeClass = 'rank-3'; rankDisplay = medalIcon('#C2410C'); }
+    return `
+      <div class="leader-item">
+        <div class="leader-rank ${badgeClass}">${rankDisplay}</div>
+        <div class="leader-name">${escapeHtml(s.name)}</div>
+        <div class="leader-score">${s.total} pts</div>
+      </div>`;
+  }).join('');
+}
+function medalIcon(color) {
+  return `<svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:${color};fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;"><circle cx="12" cy="15" r="6"/><path d="M9 10.5L7 3h2l3 6 3-6h2l-2 7.5"/></svg>`;
+}
+
+function renderTable() {
+  const headerRow = document.getElementById('tableHeader');
+  const body = document.getElementById('tableBody');
+  const headers = ['S/N', 'Student Name', ...Array.from({length: DAY_COUNT}, (_, i) => 'Day ' + (i + 1)), 'Bonus', 'Total'];
+  headerRow.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+  if (students.length === 0) { body.innerHTML = `<tr><td colspan="${headers.length}" class="empty-state">No students yet.</td></tr>`; return; }
+  body.innerHTML = students.map(s => `
+    <tr>
+      <td>${s.sn}</td>
+      <td class="name-cell">${escapeHtml(s.name)}</td>
+      ${s.days.map(d => `<td>${d !== null ? d : '-'}</td>`).join('')}
+      <td>${s.bonusUnits}</td>
+      <td class="total-cell">${s.total}</td>
+    </tr>`).join('');
+}
+
+// ---------- Teacher toggle ----------
+document.getElementById('teacherTag').addEventListener('click', () => {
+  if (teacherUnlocked) {
+    lockTeacherMode();
+  } else {
+    switchTab('manage');
+  }
+});
+
+function lockTeacherMode() {
+  teacherUnlocked = false;
+  sessionStorage.removeItem(TEACHER_SESSION_KEY);
+  updateTeacherTabVisibility();
+  updateTeacherTagState();
+  switchTab('directory');
+}
+
+function updateTeacherTagState() {
+  document.getElementById('teacherTag').classList.toggle('on', teacherUnlocked);
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  updateTeacherTagState();
+  const navBtn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+  if (navBtn) navBtn.classList.add('active');
+  if (name === 'manage') renderManageTab();
+}
+
+function updateTeacherTabVisibility() {
+  document.getElementById('manageTabBtn').style.display = teacherUnlocked ? 'flex' : 'none';
+}
+
+function lockNoticeHtml() {
+  return `
+    <div class="lock-notice">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <div><b>Teacher Mode</b> is locked. Enter the shared PIN to manage students and scores.</div>
+      <div class="pin-form">
+        <input type="password" inputmode="numeric" id="pinInput" placeholder="PIN">
+        <button id="pinSubmit">Unlock</button>
+      </div>
+      <div class="pin-error" id="pinError"></div>
+    </div>`;
+}
+function wirePinForm() {
+  document.getElementById('pinSubmit').addEventListener('click', tryUnlock);
+  document.getElementById('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+}
+
+// ---------- Manage Students tab (teacher) ----------
+function renderManageTab() {
+  const area = document.getElementById('manageArea');
+  if (!teacherUnlocked) { area.innerHTML = lockNoticeHtml(); wirePinForm(); return; }
+
+  area.innerHTML = `
+    <div class="teacher-panel">
+      <div class="panel-section">
+        <h4 class="menu-toggle" id="menuToggleAdd">
+          <span><svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add a student</span>
+          <span class="menu-chevron" id="menuChevronAdd">&#9656;</span>
+        </h4>
+        <div class="menu-body" id="menuBodyAdd">
+          <div class="add-student-form">
+            <input type="text" id="newStudentName" placeholder="Full name">
+            <button id="addStudentBtn"><svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add student</button>
+          </div>
+          <div class="save-hint" id="addHint" style="margin-top:8px;"></div>
+        </div>
+      </div>
+      <div class="panel-section">
+        <h4 class="menu-toggle" id="menuToggleSeed">
+          <span><svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Bulk seed students</span>
+          <span class="menu-chevron" id="menuChevronSeed">&#9656;</span>
+        </h4>
+        <div class="menu-body" id="menuBodySeed">
+          <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">
+            One name per line. Existing students (matched by name) are skipped, so this is safe to run more than once.
+          </p>
+          <textarea id="seedNames" placeholder="Full Name One&#10;Full Name Two&#10;Full Name Three" style="width:100%; min-height:160px; font-family:monospace; font-size:0.82rem; padding:10px; border:1.5px solid var(--border-color); border-radius:8px; background:var(--bg-warm); color:var(--text-dark); box-sizing:border-box;"></textarea>
+          <div style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+            <button class="save-btn" id="seedRunBtn" type="button">Seed to database</button>
+            <span class="save-hint" id="seedHint"></span>
+          </div>
+          <div id="seedLog" style="margin-top:10px; font-size:0.75rem; color:var(--text-muted); white-space:pre-wrap; max-height:160px; overflow-y:auto;"></div>
+        </div>
+      </div>
+      <div class="panel-section">
+        <h4 class="menu-toggle" id="menuTogglePin">
+          <span><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Change teacher PIN</span>
+          <span class="menu-chevron" id="menuChevronPin">&#9656;</span>
+        </h4>
+        <div class="menu-body" id="menuBodyPin">
+          <div class="add-student-form">
+            <input type="password" inputmode="numeric" id="oldPinInput" placeholder="Current PIN">
+            <input type="password" inputmode="numeric" id="newPinInput" placeholder="New PIN">
+            <input type="password" inputmode="numeric" id="confirmPinInput" placeholder="Confirm new PIN">
+            <button id="changePinBtn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Save PIN</button>
+          </div>
+          <div class="save-hint" id="pinChangeHint" style="margin-top:8px;"></div>
+        </div>
+      </div>
+      <div id="manageEntryList" class="entry-list"></div>
+    </div>`;
+
+  wireMenuToggle('menuToggleAdd', 'menuBodyAdd', 'menuChevronAdd');
+  wireMenuToggle('menuToggleSeed', 'menuBodySeed', 'menuChevronSeed');
+  wireMenuToggle('menuTogglePin', 'menuBodyPin', 'menuChevronPin');
+  document.getElementById('addStudentBtn').addEventListener('click', addStudent);
+  document.getElementById('newStudentName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addStudent(); });
+  document.getElementById('changePinBtn').addEventListener('click', changeTeacherPin);
+  document.getElementById('confirmPinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') changeTeacherPin(); });
+  document.getElementById('seedRunBtn').addEventListener('click', bulkSeedStudents);
+
+  renderManageEntryList();
+}
+
+function wireMenuToggle(toggleId, bodyId, chevronId) {
+  document.getElementById(toggleId).addEventListener('click', () => {
+    const body = document.getElementById(bodyId);
+    const open = body.classList.toggle('open');
+    document.getElementById(chevronId).innerHTML = open ? '&#9662;' : '&#9656;';
+  });
+}
+
+async function bulkSeedStudents() {
+  const btn = document.getElementById('seedRunBtn');
+  const hint = document.getElementById('seedHint');
+  const logEl = document.getElementById('seedLog');
+  const raw = document.getElementById('seedNames').value;
+  const names = raw.split('\n').map(n => n.trim()).filter(Boolean);
+
+  logEl.textContent = '';
+  const log = (msg) => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+  if (names.length === 0) {
+    hint.textContent = 'Enter at least one name first.';
+    hint.className = 'save-hint err';
+    return;
+  }
+
+  btn.disabled = true;
+  seedingInProgress = true;
+  hint.textContent = `Seeding...`;
+  hint.className = 'save-hint';
+  log(`Starting. ${names.length} name(s) in the box.`);
+
+  try {
+    log(`Using in-memory student list (${allStudents.length} existing).`);
+    const existingNames = new Set(allStudents.map(s => (s.name || '').trim().toLowerCase()));
+    let sn = allStudents.reduce((max, s) => Math.max(max, s.sn), 0);
+
+    const toInsert = [];
+    let skipped = 0;
+    for (const name of names) {
+      if (existingNames.has(name.toLowerCase())) {
+        log(`Skipped (already exists): ${name}`);
+        skipped++;
+        continue;
+      }
+      sn += 1;
+      toInsert.push({ id: 's' + sn, sn, name, days: daysToDb(Array(DAY_COUNT).fill(null)), bonus_units: daysToDb(Array(DAY_COUNT).fill(null)), active: true });
+      existingNames.add(name.toLowerCase());
+    }
+
+    if (toInsert.length > 0) {
+      log(`Inserting ${toInsert.length} new student(s) in one batch...`);
+      const { error } = await sb.from('students').insert(toInsert);
+      if (error) throw error;
+      toInsert.forEach(row => log(`Added S/N ${row.sn}: ${row.name}`));
+    }
+
+    hint.textContent = `Done — ${toInsert.length} added, ${skipped} skipped.`;
+    hint.className = 'save-hint ok';
+  } catch (e) {
+    hint.textContent = 'Could not seed: ' + (e && e.message ? e.message : 'try again.');
+    hint.className = 'save-hint err';
+    log('ERROR: ' + (e && e.message ? e.message : String(e)));
+    if (e && e.code) log('Error code: ' + e.code);
+  } finally {
+    btn.disabled = false;
+    seedingInProgress = false;
+    renderManageEntryList(); // refresh just the student list below, not the whole panel/textarea
+  }
+}
+
+function renderManageEntryList() {
+  const list = document.getElementById('manageEntryList');
+  if (!list) return;
+  if (allStudents.length === 0) { list.innerHTML = `<div class="empty-state">No students yet. Add one above.</div>`; return; }
+
+  const active = allStudents.filter(s => s.active);
+  const inactive = allStudents.filter(s => !s.active);
+
+  let html = '';
+  html += `<div class="list-subhead">Active (${active.length})</div>`;
+  html += active.length
+    ? active.map(manageRowHtml).join('')
+    : `<div class="empty-state" style="padding:16px;">No active students.</div>`;
+
+  if (inactive.length > 0) {
+    html += `<div class="list-subhead">Inactive (${inactive.length})</div>`;
+    html += inactive.map(manageRowHtml).join('');
+  }
+
+  list.innerHTML = html;
+  allStudents.forEach(s => wireManageRow(s.id));
+}
+
+function tryUnlock() {
+  const val = document.getElementById('pinInput').value;
+  if (val === teacherPin) {
+    teacherUnlocked = true;
+    sessionStorage.setItem(TEACHER_SESSION_KEY, "1");
+    updateTeacherTabVisibility();
+    const current = document.querySelector('.tab-content.active').id.replace('tab-', '');
+    switchTab(current === 'directory' ? 'manage' : current);
+  } else {
+    document.getElementById('pinError').textContent = 'Incorrect PIN. Try again.';
+  }
+}
+
+async function addStudent() {
+  const input = document.getElementById('newStudentName');
+  const hint = document.getElementById('addHint');
+  const name = input.value.trim();
+  if (!name) { hint.textContent = 'Enter a name first.'; hint.className = 'save-hint err'; return; }
+  const sn = nextSN();
+  const id = 's' + sn;
+  hint.textContent = 'Adding...';
+  hint.className = 'save-hint';
+  try {
+    const { error } = await sb.from('students').insert({ id, sn, name, days: daysToDb(Array(DAY_COUNT).fill(null)), bonus_units: daysToDb(Array(DAY_COUNT).fill(null)), active: true });
+    if (error) throw error;
+    input.value = '';
+    hint.textContent = 'Added ' + name + '.';
+    hint.className = 'save-hint ok';
+  } catch (e) {
+    hint.textContent = 'Could not add student: ' + (e && e.message ? e.message : 'try again.');
+    hint.className = 'save-hint err';
+  }
+}
+
+async function changeTeacherPin() {
+  const oldInput = document.getElementById('oldPinInput');
+  const newInput = document.getElementById('newPinInput');
+  const confirmInput = document.getElementById('confirmPinInput');
+  const hint = document.getElementById('pinChangeHint');
+  const oldPin = oldInput.value.trim();
+  const newPin = newInput.value.trim();
+  const confirmPin = confirmInput.value.trim();
+
+  if (!oldPin) { hint.textContent = 'Enter the current PIN first.'; hint.className = 'save-hint err'; return; }
+  if (oldPin !== teacherPin) { hint.textContent = 'Current PIN is incorrect.'; hint.className = 'save-hint err'; return; }
+  if (!newPin) { hint.textContent = 'Enter a new PIN.'; hint.className = 'save-hint err'; return; }
+  if (newPin !== confirmPin) { hint.textContent = 'New PINs do not match.'; hint.className = 'save-hint err'; return; }
+
+  hint.textContent = 'Saving...';
+  hint.className = 'save-hint';
+  try {
+    const { error } = await sb.from('app_settings').upsert({ key: 'teacher_pin', value: newPin }, { onConflict: 'key' });
+    if (error) throw error;
+    teacherPin = newPin;
+    oldInput.value = '';
+    newInput.value = '';
+    confirmInput.value = '';
+    hint.textContent = 'PIN updated.';
+    hint.className = 'save-hint ok';
+  } catch (e) {
+    hint.textContent = 'Could not update PIN: ' + (e && e.message ? e.message : 'try again.');
+    hint.className = 'save-hint err';
+  }
+}
+
+function manageRowHtml(s) {
+  const isOpen = entryOpenId === s.id;
+  const isRenaming = renamingId === s.id;
+  const nameBlock = isRenaming
+    ? `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+         <input type="text" id="renameInput-${escapeAttr(s.id)}" value="${escapeAttr(s.name)}" style="flex:1; min-width:160px; padding:6px 10px; border:1.5px solid var(--border-color); border-radius:6px; font-size:0.9rem; font-weight:600; background:var(--bg-warm); color:var(--text-dark);">
+         <button class="save-btn" data-save-name="${escapeAttr(s.id)}" style="padding:6px 12px; font-size:0.78rem;">Save</button>
+         <button class="ghost-btn" data-cancel-name="${escapeAttr(s.id)}" style="padding:6px 12px; font-size:0.78rem;">Cancel</button>
+       </div>`
+    : `<div class="entry-row-name">${escapeHtml(s.name)} ${s.active ? '' : '<span class="inactive-pill">Inactive</span>'}
+         <button class="ghost-btn" data-edit-name="${escapeAttr(s.id)}" title="Edit name" style="padding:3px 8px; margin-left:4px;"><svg class="icon sm" viewBox="0 0 24 24" style="margin:0;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+       </div>`;
+  return `
+    <div class="entry-row ${s.active ? '' : 'inactive'}" data-id="${escapeAttr(s.id)}">
+      <div class="entry-row-head" data-toggle="${escapeAttr(s.id)}">
+        <div>
+          ${nameBlock}
+          <div class="entry-row-sn">S/N: ${s.sn}</div>
+        </div>
+        <div class="entry-row-total">${s.total} / 100</div>
+      </div>
+      <div class="entry-body ${isOpen ? 'open' : ''}" id="mbody-${escapeAttr(s.id)}">
+        <div class="entry-footer">
+          <div class="entry-footer-actions">
+            <button class="ghost-btn" data-toggle-active="${escapeAttr(s.id)}">
+              ${s.active
+                ? '<svg class="icon sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>Inactivate'
+                : '<svg class="icon sm" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Reactivate'}
+            </button>
+            <button class="danger-btn" data-delete="${escapeAttr(s.id)}"><svg class="icon sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Delete</button>
+          </div>
+          <span class="save-hint" id="mhint-${escapeAttr(s.id)}"></span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function wireManageRow(id) {
+  const row = document.querySelector(`#manageEntryList .entry-row[data-id="${cssEscape(id)}"]`);
+  if (!row) return;
+  row.querySelector('.entry-row-head').addEventListener('click', (e) => {
+    if (e.target.closest('[data-edit-name]') || e.target.closest('[data-save-name]') || e.target.closest('[data-cancel-name]') || renamingId === id) return;
+    entryOpenId = entryOpenId === id ? null : id;
+    renderManageEntryList();
+  });
+  const editBtn = row.querySelector(`[data-edit-name="${cssEscape(id)}"]`);
+  if (editBtn) editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    renamingId = id;
+    renderManageEntryList();
+    const inp = document.getElementById(`renameInput-${id}`);
+    if (inp) { inp.focus(); inp.select(); }
+  });
+  const saveNameBtn = row.querySelector(`[data-save-name="${cssEscape(id)}"]`);
+  if (saveNameBtn) saveNameBtn.addEventListener('click', (e) => { e.stopPropagation(); saveStudentName(id); });
+  const cancelNameBtn = row.querySelector(`[data-cancel-name="${cssEscape(id)}"]`);
+  if (cancelNameBtn) cancelNameBtn.addEventListener('click', (e) => { e.stopPropagation(); renamingId = null; renderManageEntryList(); });
+  const renameInput = row.querySelector(`#renameInput-${cssEscape(id)}`);
+  if (renameInput) {
+    renameInput.addEventListener('click', (e) => e.stopPropagation());
+    renameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveStudentName(id);
+      if (e.key === 'Escape') { renamingId = null; renderManageEntryList(); }
+    });
+  }
+  const toggleBtn = row.querySelector(`[data-toggle-active="${cssEscape(id)}"]`);
+  if (toggleBtn) toggleBtn.addEventListener('click', () => toggleActive(id));
+  const deleteBtn = row.querySelector(`[data-delete="${cssEscape(id)}"]`);
+  if (deleteBtn) deleteBtn.addEventListener('click', () => confirmDelete(id));
+}
+
+async function saveStudentName(id) {
+  const inp = document.getElementById(`renameInput-${id}`);
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) { inp.classList.add('invalid'); return; }
+  try {
+    const { error } = await sb.from('students').update({ name }).eq('id', id);
+    if (error) throw error;
+    const s = allStudents.find(x => x.id === id);
+    if (s) s.name = name;
+    renamingId = null;
+    renderManageEntryList();
+  } catch (e) {
+    const hint = document.getElementById(`mhint-${id}`);
+    if (hint) { hint.textContent = 'Could not rename: ' + (e && e.message ? e.message : 'try again.'); hint.className = 'save-hint err'; }
+  }
+}
+
+async function toggleActive(id) {
+  const s = allStudents.find(x => x.id === id);
+  if (!s) return;
+  const hint = document.getElementById(`mhint-${id}`);
+  try {
+    const { error } = await sb.from('students').update({ active: !s.active }).eq('id', id);
+    if (error) throw error;
+    s.active = !s.active;
+    entryOpenId = null;
+    renderManageEntryList();
+  } catch (e) {
+    if (hint) { hint.textContent = 'Could not update: ' + (e && e.message ? e.message : 'try again.'); hint.className = 'save-hint err'; }
+  }
+}
+
+function confirmDelete(id) {
+  const s = allStudents.find(x => x.id === id);
+  if (!s) return;
+  pendingConfirm = id;
+  document.getElementById('confirmTitle').textContent = 'Delete ' + s.name + '?';
+  document.getElementById('confirmBody').textContent = 'This permanently removes this student and all their scores. This cannot be undone.';
+  document.getElementById('confirmOverlay').style.display = 'flex';
+}
+
+document.getElementById('confirmCancel').addEventListener('click', () => {
+  pendingConfirm = null;
+  document.getElementById('confirmOverlay').style.display = 'none';
+});
+document.getElementById('confirmOk').addEventListener('click', async () => {
+  if (!pendingConfirm) return;
+  const id = pendingConfirm;
+  document.getElementById('confirmOverlay').style.display = 'none';
+  pendingConfirm = null;
+  try {
+    const { error } = await sb.from('students').delete().eq('id', id);
+    if (error) throw error;
+  } catch (e) {
+    showStatus('Could not delete student: ' + (e && e.message ? e.message : 'try again.'), true);
+  }
+});
+
+function iconInfo() {
+  return `<svg class="icon" viewBox="0 0 24 24" style="margin-right:4px;"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r="0.5" fill="currentColor" stroke="none"/></svg>`;
+}
+function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(str) { return escapeHtml(str); }
+function cssEscape(str) { return String(str).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c); }
+
+document.querySelectorAll('#navTabs .tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+document.getElementById('search').addEventListener('input', renderDirectory);
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('scoreModal').addEventListener('click', (e) => { if (e.target.id === 'scoreModal') closeModal(); });
+document.getElementById('scoreEditClose').addEventListener('click', closeScoreEditor);
+document.getElementById('scoreEditModal').addEventListener('click', (e) => { if (e.target.id === 'scoreEditModal') closeScoreEditor(); });
+document.getElementById('editBackToDays').addEventListener('click', () => {
+  editingDayIndex = null;
+  renderScoreEditor();
+  const pickerHint = document.getElementById('editPickerHint');
+  if (pickerHint) { pickerHint.textContent = ''; pickerHint.className = 'save-hint'; }
+});
+document.getElementById('editSaveBtn').addEventListener('click', saveEditorDay);
+
+updateTeacherTabVisibility();
+subscribe();
+</script>
+</body>
+</html>
