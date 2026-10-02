@@ -1,0 +1,7 @@
+{
+  "name": "mahad-client-tests",
+  "private": true,
+  "description": "jsdom scripted-session tests for the browser client against an in-memory fake of the Supabase REST/RPC API",
+  "scripts": { "test": "node run.js", "lint": "eslint --no-eslintrc -c eslintrc.json ../../js/*.js" },
+  "devDependencies": { "esbuild": "^0.25.0", "eslint": "^8.57.0", "jsdom": "^26.0.0" }
+}

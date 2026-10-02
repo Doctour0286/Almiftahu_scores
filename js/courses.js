@@ -75,7 +75,7 @@ function paint(host, v, creating) {
     ${creating ? `<div class="field-row"><label for="cfCopy">Start from</label>
       <select id="cfCopy" class="panel-select"><option value="">Blank (defaults)</option>
       ${state.courses.map(c => `<option value="${escapeAttr(c.id)}"${state.courseDraft.copyFrom === c.id ? ' selected' : ''}>Copy from ${escapeHtml(c.name)}</option>`).join('')}</select></div>` : ''}
-    ${txt('cfCode', 'Code (A-Z, 0-9, -)', v.code, 'maxlength="12" autocapitalize="characters"')}
+    ${txt('cfCode', creating ? 'Code (A-Z, 0-9, -)' : 'Code (fixed)', v.code, creating ? 'maxlength="12" autocapitalize="characters"' : 'readonly')}
     ${txt('cfName', 'Name', v.name)}
     ${txt('cfNameAr', 'Name (Arabic)', v.name_ar, 'dir="auto"')}
     ${txt('cfUnit', 'Unit label (e.g. Day, Week)', v.unit_label, 'maxlength="30"')}
