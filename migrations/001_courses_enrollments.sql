@@ -128,6 +128,11 @@ begin
          else array_fill(0, array[v_course.day_count]) end,
     coalesce(s.active, true)
   from public.students s
+  -- v3.9: never enrol a student whose ONLY enrollments are in other courses (created by the new client
+  -- for another course; matters when step 4 is re-run after a rollback). Legacy students (no enrollment
+  -- yet) and students already in ADAB are still copied.
+  where exists (select 1 from public.enrollments x where x.student_id = s.id and x.course_id = v_course.id)
+     or not exists (select 1 from public.enrollments y where y.student_id = s.id)
   on conflict (student_id, course_id) do update set
     sn = excluded.sn, days = excluded.days,
     bonus_units = excluded.bonus_units, active = excluded.active;

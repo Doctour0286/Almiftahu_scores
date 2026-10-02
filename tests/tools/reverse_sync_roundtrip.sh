@@ -64,11 +64,9 @@ snap_legacy_enr() { q -c "select md5(string_agg(concat_ws('|',student_id,course_
 LEG_BEFORE=$(snap_legacy_enr)
 q -c "select private.sync_legacy_students()" >/dev/null
 eq "enrollments of s1-s4 identical after reverse then forward sync" "$(snap_legacy_enr)" "$LEG_BEFORE"
-# KNOWN ISSUE (reported, not asserted as a pass): the forward copy enrols EVERY legacy students row in ADAB,
-# including s5 who exists only in another course. After a rollback, re-running step 4 would do this to any
-# student the new client created in a non-ADAB course. See PRD v3.9 / session 10.
+# v3.9 fix: the forward copy must not enrol a student who is only in another course (s5) into ADAB.
 SPUR=$(q -c "select count(*) from public.enrollments e join public.courses c on c.id=e.course_id where c.code='ADAB' and e.student_id='s5'")
-[ "$SPUR" = "0" ] && ok "forward sync did not enrol the other-course-only student in ADAB" || echo "  NOTE known issue: sync_legacy_students enrolled other-course-only student s5 into ADAB (see PRD session 10)"
+eq "forward sync did not enrol the other-course-only student in ADAB" "$SPUR" "0"
 q -c "delete from public.enrollments where student_id='s5' and course_id='$CID'" >/dev/null   # undo, keep later steps clean
 
 echo "== T5 refuses when ADAB no longer matches the old client's assumptions"
