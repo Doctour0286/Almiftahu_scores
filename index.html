@@ -14,6 +14,7 @@
   <div class="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
   <h1>معهد مفتاح العلم</h1>
   <h2>Ma'had Miftah al-'Ilm &bull; Score Portal</h2>
+  <div class="course-switch" id="courseSwitchWrap" style="display:none;"><select id="courseSwitch" aria-label="Course"></select></div>
 </header>
 
 <div class="nav-tabs" id="navTabs">
@@ -58,7 +59,7 @@
     </div>
     <div class="score-summary-box">
       <div class="total-val" id="modalTotal">0</div>
-      <div class="total-lbl">Total Accumulated Score (max 100)</div>
+      <div class="total-lbl" id="modalTotalLbl">Total Accumulated Score (max 100)</div>
     </div>
     <div class="score-grid" id="modalScoreGrid"></div>
     <div id="modalEditWrap" style="display:none;"></div>
@@ -74,7 +75,7 @@
     </div>
 
     <div id="editPickerView">
-      <p style="text-align:center; font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Select a day to edit</p>
+      <p id="editPickHelp" style="text-align:center; font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Select a day to edit</p>
       <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;" id="editDayDots"></div>
       <div class="save-hint" id="editPickerHint" style="margin-top:14px; text-align:center;"></div>
     </div>
@@ -87,16 +88,16 @@
       </div>
       <div class="day-grid" style="grid-template-columns: 1fr; gap:12px;">
         <div class="day-field">
-          <label>Score (0-<span id="editDayMaxLabel">10</span>)</label>
+          <label id="editScoreLabel">Score (0-<span id="editDayMaxLabel">10</span>)</label>
           <input type="number" min="0" max="10" step="1" id="editDayScoreInput" placeholder="0-10">
         </div>
         <div class="day-field">
-          <label>Bonus units for this day (each = <span id="editBonusValLabel">2</span> pts)</label>
+          <label id="editBonusLabel">Bonus units for this day (each = <span id="editBonusValLabel">2</span> pts)</label>
           <input type="number" min="0" step="1" id="editDayBonusInput" placeholder="0">
         </div>
       </div>
       <div class="entry-footer" style="margin-top:16px;">
-        <button class="save-btn" id="editSaveBtn" style="width:100%; justify-content:center;"><svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Day <span id="editSaveDayLabel">1</span></button>
+        <button class="save-btn" id="editSaveBtn" style="width:100%; justify-content:center;"><svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span id="editSaveText">Save Day 1</span></button>
       </div>
       <div class="save-hint" id="editHint" style="margin-top:10px; text-align:center;"></div>
     </div>
