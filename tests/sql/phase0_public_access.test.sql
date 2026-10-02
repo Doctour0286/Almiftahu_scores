@@ -45,6 +45,8 @@ alter table public.students           enable row level security;
 alter table public.enrollments        enable row level security;
 alter table public.enrollment_results enable row level security;
 alter table public.app_settings       enable row level security;
+-- simulate 005's table step: Supabase hands anon ALL on public tables by default, 005 revokes it then grants SELECT
+revoke all on all tables in schema public from anon, authenticated;
 grant select on public.courses, public.students, public.enrollments, public.enrollment_results to anon;
 
 set role anon;

@@ -8,6 +8,13 @@ end $$;
 create schema if not exists extensions;
 grant usage on schema public to anon, authenticated;
 
+-- Supabase's default ACLs hand anon/authenticated everything on every NEW public table, sequence and
+-- function. Mimic that (before the tables below are created) so lockdown tests start from a realistic,
+-- wide-open state instead of passing vacuously.
+alter default privileges in schema public grant all on tables    to anon, authenticated;
+alter default privileges in schema public grant all on sequences to anon, authenticated;
+alter default privileges in schema public grant all on functions to anon, authenticated;
+
 create table public.students (
   id text primary key, sn int, name text,
   days int[], bonus_units int[], active boolean default true
