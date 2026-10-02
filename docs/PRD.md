@@ -39,14 +39,14 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | Phase | Name | Status | Notes | Last updated |
 |---|---|---|---|---|
 | Planning | Requirements & decisions | ✅ | PRD v3.2 complete (§9-14, Appendices A-D; review fixes and v3.2 flexibility changes in §14.3). Open items in §14.1 are non-blocking for Phase 0 | 2 Oct 2026 |
-| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` ✅ (run on staging by the owner, session 5). 0.2 `003_roster_rpcs` ✅ (run on staging by the owner, session 5). 0.3 `004_public_access` written, passing local tests (**not yet run on staging**) | 2 Oct 2026 |
+| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` ✅ (run on staging by the owner, session 5). 0.2 `003_roster_rpcs` ✅ (run on staging by the owner, session 5). 0.3 `004_public_access` ✅ (run on staging by the owner, session 6, ran successfully). 0.4 modular client next | 2 Oct 2026 |
 | 1 | Exam builder (versions, sections, questions) | ⬜ | | |
 | 2 | Codes & taking the exam | ⬜ | | |
 | 3 | Marking, scoring & leaderboard | ⬜ | | |
 | 4 | Certificates | ⬜ | Needs institution defaults entered (logo, signatory, wording); per-course overrides optional | |
 | 5 | Polish | ⬜ | | |
 
-**Current task pointer:** *Phase 0, task 0.3 awaiting a staging run: apply `migrations/004_public_access.sql` in the staging SQL editor and paste back any errors or notices (it is additive: it publishes the new tables to realtime and creates read policies that stay inert until `005`). Optional: `tests/sql/phase0_public_access.test.sql` (rolls back). Next after that: task 0.4 (modular client: split `index.html` into `css/` + `js/`, no behavior change). Still open from 0.0: Netlify decision (D-36), production backup, passphrase (O-6).*
+**Current task pointer:** *Phase 0, task 0.4 (modular client: split `index.html` into `css/` + `js/` modules per §10.1, `js/config.js`, vendored pinned `supabase-js`, **no behavior change**; AC-0.12 screenshot comparison). Plan to be agreed with the owner before implementing. Still open from 0.0: Netlify decision (D-36), production backup, passphrase (O-6). `005_security_lockdown` is authored in task 0.7 and must not be run before the new client is deployed.*
 
 ## 0.4 Session log (append-only)
 
@@ -57,6 +57,7 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | 3 | 2 Oct 2026 | Owner asked that everything be configurable and a new course creatable any time. Audited the plan; added per-course unit label, lesson mode, eligibility rule, per-course certificate settings with institution defaults, create-course-from-existing, and a system-parameters table | `PRD.md` (v3.2) | Owner reviews v3.2, agrees Netlify (D-36), creates staging project, approves Phase 0 start |
 | 4 | 2 Oct 2026 | Read PRD and `index.html`; baseline commit to `main` (task 0.0); wrote `000`-`002` plus local SQL tests and runner (task 0.1). Found and fixed three defects in the v3.2 reference SQL (see §14.3, v3.3) | `migrations/000-002`, `tests/sql/phase0_core.test.sql`, `tests/tools/*`, this PRD (v3.3) | Owner runs `000`-`002` on staging and pastes output; then task 0.2 |
 | 5 | 2 Oct 2026 | Owner confirmed `000`-`002` ran on staging. Wrote `003`: 12 course/roster/score RPCs, Phase-0 `recompute_result`, triggers, backfill. 167 assertion lines in the roster test file (plus a parallel S/N test) written; they caught one defect (see §14.3, v3.4). Owner ran `003` on staging; pasting the psql-only test into the SQL editor failed on `\set`, so the newer tests were made meta-command-free. Then task 0.3: wrote `004` (realtime publication + inert read policies) and found the PRD's `read_students` policy fails (see v3.5). Fixed `tests/README.md` | `migrations/003_roster_rpcs.sql`, `tests/sql/phase0_roster.test.sql`, `tests/tools/concurrency_sn.sh`, `migrations/004_public_access.sql`, `tests/sql/phase0_public_access.test.sql`, `tests/README.md`, this PRD (v3.5) | Owner applies `004` on staging and pastes output; then task 0.4 |
+| 6 | 2 Oct 2026 | Read the repo and PRD; owner confirmed `004` ran successfully on staging. Updated tracker and pointer | `docs/PRD.md` | Agree the task 0.4 plan, then implement |
 
 ## 0.5 Conventions in this document
 - **IDs:** `D-xx` decisions, `FR-xx` functional requirements, `NFR-xx` non-functional, `AC-x.y` acceptance criteria, `E_XXX` error codes.
