@@ -14,9 +14,11 @@ const ENVIRONMENTS = {
   },
 };
 
-// TEMPORARY DEVIATION from PRD §10.2 (recorded in PRD v3.6, open item O-10): the production
-// hostname is not known yet, so the hosts below are treated as staging and everything else uses
-// production. Once the production domain exists, replace this with a PRODUCTION_HOSTS allow-list.
+// TEMPORARY DEVIATION from PRD §10.2 (recorded in PRD v3.6): the production hostname is not
+// known yet, so we cannot say "production domain -> production, everything else -> staging"
+// without risking pointing the live site at staging. Until it is known, the hosts below are
+// treated as staging and everything else keeps using production, exactly as before.
+// Once the production domain exists, replace this with a PRODUCTION_HOSTS allow-list.
 function isStagingHost(hostname) {
   return (
     hostname === '' ||                       // file:// preview
@@ -35,10 +37,8 @@ export const IS_PRODUCTION = ENV.name === 'production';
 export const SUPABASE_URL = ENV.url;
 export const SUPABASE_ANON_KEY = ENV.key;
 
-// Client storage (PRD §10.4). No PINs, codes or data are ever written to localStorage.
-export const TEACHER_TOKEN_KEY = 'mahad_teacher_token';
-export const COURSE_KEY = 'mahad_course_id';
-export const LEGACY_TEACHER_FLAG_KEY = 'mahad_teacher_unlocked';   // removed on load (v3 had a bare flag)
-
-export const REALTIME_DEBOUNCE_MS = 500;
-export const PAGE_SIZE = 1000;   // PostgREST default max rows per request
+export const DAY_COUNT = 10;
+export const DAY_MAX = 10;
+export const BONUS_UNIT_VALUE = 2;
+export const MAX_TOTAL = 100;
+export const TEACHER_SESSION_KEY = "mahad_teacher_unlocked";

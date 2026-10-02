@@ -1,79 +1,47 @@
 // Shared in-memory store plus pure data helpers (no DOM, no network).
-// Shared mutable values live on one exported object: ES modules cannot reassign an imported binding.
+import { BONUS_UNIT_VALUE, DAY_COUNT, MAX_TOTAL, TEACHER_SESSION_KEY } from './config.js';
 
 export const state = {
-  loaded: false,            // first data load finished (until then views show "Loading…")
-  courses: [],              // every course, oldest first
-  courseId: null,           // selected course
-  rows: [],                 // enrollments of the selected course (teacher: incl. inactive; public: active only)
-  teacherUnlocked: false,   // true only after teacher_login / a successful teacher_ping
-  lockMessage: '',          // shown on the lock notice (e.g. after the session expired)
-  manageTab: 'roster',      // roster | course | account
-  entryOpenId: null,        // roster row currently expanded
-  renamingId: null,         // roster row whose names are being edited
+  allStudents: [],   // everything from Supabase (active + inactive)
+  students: [],      // active only — used by public views
+  entryOpenId: null,
+  renamingId: null,   // which student's name is currently being edited inline
+  teacherUnlocked: sessionStorage.getItem(TEACHER_SESSION_KEY) === "1",
+  pendingConfirm: null,
   seedingInProgress: false,
-  courseDraft: null,        // course form state (null = editing the selected course; {copyFrom} = creating)
-  courseFormDirty: false,
-  editingEnrollmentId: null,// score editor: which enrollment
-  editingDayIndex: null,    // score editor: which unit (0-based); null = unit-picker screen
+  teacherPin: "2026", // fallback until loaded from Supabase
+  editingStudentId: null, // which student the score-edit wizard is open for
+  editingDayIndex: null,  // which day (0-9) the wizard is on; null = day-picker screen
 };
 
-export function currentCourse() {
-  return state.courses.find(c => c.id === state.courseId) || null;
-}
-export function activeRows() { return state.rows.filter(r => r.active); }
-export function findRow(enrollmentId) { return state.rows.find(r => r.id === enrollmentId) || null; }
+  // which day (0-9) the wizard is on; null = day-picker screen
 
-// ---------- lesson maths (PRD §5.1) ----------
-// lesson = min(lesson_max, sum(recorded unit scores) + sum(bonus units) * bonus_unit_value)
-export function lessonPoints(days, bonusUnits, course) {
-  if (!course || course.lesson_mode !== 'scored') return 0;
-  const daySum = days.reduce((a, d) => a + (typeof d === 'number' ? d : 0), 0);
-  const bonusSum = bonusUnits.reduce((a, b) => a + (typeof b === 'number' && b > 0 ? b : 0), 0) * Number(course.bonus_unit_value);
-  return Math.min(Number(course.lesson_max), daySum + bonusSum);
-}
-export function bonusPoints(bonusUnits, course) {
-  if (!course) return 0;
-  return bonusUnits.reduce((a, b) => a + (typeof b === 'number' && b > 0 ? b : 0), 0) * Number(course.bonus_unit_value);
+export function computeTotal(days, bonusUnits) {
+  const daySum = days.reduce((acc, d) => acc + (typeof d === 'number' ? d : 0), 0);
+  const bonusSum = bonusUnits.reduce((acc, b) => acc + (typeof b === 'number' ? b : 0), 0) * BONUS_UNIT_VALUE;
+  return Math.min(MAX_TOTAL, daySum + bonusSum);
 }
 
-// Database arrays: days use -1 for "unset"; bonus uses 0 for "none". The app uses null / 0.
-export function daysFromDb(days, count) {
-  const src = Array.isArray(days) ? days : [];
-  return Array.from({ length: count }, (_, i) => (typeof src[i] === 'number' && src[i] >= 0 ? src[i] : null));
+// Postgres integer[] can't hold null mixed with numbers cleanly via the JS
+// client here, so "unset" is stored as -1 and translated to null in the
+// app; the UI never shows -1, only blank. Same convention for bonus_units.
+export function daysToDb(days) {
+  return days.map(d => (typeof d === 'number' ? d : -1));
 }
-export function bonusFromDb(bonus, count) {
-  const src = Array.isArray(bonus) ? bonus : [];
-  return Array.from({ length: count }, (_, i) => (typeof src[i] === 'number' && src[i] > 0 ? src[i] : 0));
+export function daysFromDb(days) {
+  return (Array.isArray(days) ? days : Array(DAY_COUNT).fill(-1)).map(d => (typeof d === 'number' && d >= 0 ? d : null));
 }
 
-// One normalized row per enrollment. `raw` comes either from admin_list_roster (has name/status
-// inline) or from the public reads (already merged by the loader into the same field names).
-export function normalizeRow(raw, course) {
-  const count = course.lesson_mode === 'scored' ? course.day_count : 0;
-  const days = daysFromDb(raw.days, count);
-  const bonusUnits = bonusFromDb(raw.bonus_units, count);
+export function normalizeStudent(row) {
+  const days = daysFromDb(row.days).length === DAY_COUNT ? daysFromDb(row.days) : Array(DAY_COUNT).fill(null);
+  const bonusRaw = daysFromDb(row.bonus_units);
+  const bonusUnits = bonusRaw.length === DAY_COUNT ? bonusRaw.map(b => (b === null ? 0 : b)) : Array(DAY_COUNT).fill(0);
   return {
-    id: raw.enrollment_id,
-    studentId: raw.student_id,
-    sn: typeof raw.sn === 'number' ? raw.sn : 0,
-    name: raw.name || 'Unknown',
-    nameAr: raw.name_ar || '',
-    active: raw.active !== false,
-    examApproved: !!raw.exam_approved,
-    status: raw.status || 'not_eligible',
-    days, bonusUnits,
-    total: lessonPoints(days, bonusUnits, course),
-    bonusPoints: bonusPoints(bonusUnits, course),
+    id: row.id, sn: typeof row.sn === 'number' ? row.sn : 0, name: row.name || 'Unknown',
+    days, bonusUnits, active: row.active !== false, total: computeTotal(days, bonusUnits)
   };
 }
 
-// Competition ranking (D-26): tied totals share a rank, the next rank skips (1, 2, 2, 4).
-export function rankRows(rows) {
-  const sorted = [...rows].sort((a, b) => b.total - a.total || a.sn - b.sn);
-  let rank = 0, prev = null;
-  return sorted.map((r, i) => {
-    if (prev === null || r.total !== prev) { rank = i + 1; prev = r.total; }
-    return { row: r, rank };
-  });
+export function nextSN() {
+  return state.allStudents.reduce((max, s) => Math.max(max, s.sn), 0) + 1;
 }
