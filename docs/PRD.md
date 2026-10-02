@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Document version** | 3.2 |
+| **Document version** | 3.3 |
 | **Date** | 2 October 2026 |
 | **Supersedes** | `exam-system-plan.md` (v1) and `exam-system-plan-v2.md` |
 | **Product** | Extension of the existing "Ma'had Miftah al-'Ilm: Score Portal" (single-file web app) |
@@ -39,14 +39,14 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | Phase | Name | Status | Notes | Last updated |
 |---|---|---|---|---|
 | Planning | Requirements & decisions | ✅ | PRD v3.2 complete (§9-14, Appendices A-D; review fixes and v3.2 flexibility changes in §14.3). Open items in §14.1 are non-blocking for Phase 0 | 2 Oct 2026 |
-| 0 | Foundation (security, courses, modular refactor) | ⬜ | Not started | |
+| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` written and passing local SQL tests (PR open, **not yet run on staging**) | 2 Oct 2026 |
 | 1 | Exam builder (versions, sections, questions) | ⬜ | | |
 | 2 | Codes & taking the exam | ⬜ | | |
 | 3 | Marking, scoring & leaderboard | ⬜ | | |
 | 4 | Certificates | ⬜ | Needs institution defaults entered (logo, signatory, wording); per-course overrides optional | |
 | 5 | Polish | ⬜ | | |
 
-**Current task pointer:** *Phase 0, task 0.0 (preparation): owner creates the staging Supabase project and decides on Netlify (D-36); then baseline commit to `main`. Awaiting the owner's go-ahead.*
+**Current task pointer:** *Phase 0, task 0.1 awaiting staging run: owner applies `migrations/000`-`002` in the staging Supabase SQL editor (in order) and pastes back any errors. Next after that: task 0.2 (`003_roster_rpcs`). Still open from 0.0: staging project (O-9), Netlify decision (D-36), production backup, passphrase (O-6).*
 
 ## 0.4 Session log (append-only)
 
@@ -55,6 +55,7 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | 1 | 2 Oct 2026 | Reviewed existing app. Ran requirements discussion. Produced plan v1, v2, and this PRD | `exam-system-plan.md`, `exam-system-plan-v2.md`, `PRD.md` | Owner reviews PRD, answers §14 items, approves start of Phase 0 |
 | 2 | 2 Oct 2026 | Read all uploads; verified GitHub access; owner chose staging project + defaults; completed PRD (§9-14, Appendices A-D); fixed migration numbering, Phase-0 `recompute_result`, `read_students` policy | `PRD.md` (v3.1) | Owner reviews v3.1, answers O-4/O-7/O-8 when convenient, approves Phase 0 start |
 | 3 | 2 Oct 2026 | Owner asked that everything be configurable and a new course creatable any time. Audited the plan; added per-course unit label, lesson mode, eligibility rule, per-course certificate settings with institution defaults, create-course-from-existing, and a system-parameters table | `PRD.md` (v3.2) | Owner reviews v3.2, agrees Netlify (D-36), creates staging project, approves Phase 0 start |
+| 4 | 2 Oct 2026 | Read PRD and `index.html`; baseline commit to `main` (task 0.0); wrote `000`-`002` plus local SQL tests and runner (task 0.1). Found and fixed three defects in the v3.2 reference SQL (see §14.3, v3.3) | `migrations/000-002`, `tests/sql/phase0_core.test.sql`, `tests/tools/*`, this PRD (v3.3) | Owner runs `000`-`002` on staging and pastes output; then task 0.2 |
 
 ## 0.5 Conventions in this document
 - **IDs:** `D-xx` decisions, `FR-xx` functional requirements, `NFR-xx` non-functional, `AC-x.y` acceptance criteria, `E_XXX` error codes.
@@ -328,7 +329,7 @@ Example: lessons 86/100, exam 72, split 50/50 → **79.0**. Split 60/40 → 51.6
 | FR-A4 | Failed logins are throttled: 5 failures → locked for 5 minutes (global scope; optionally per-IP via `request.headers`). Message: "Too many attempts. Try again in N minutes." |
 | FR-A5 | "Lock teacher mode" calls `teacher_logout` and deletes the session |
 | FR-A6 | Teacher can change the PIN (requires current PIN via server). Minimum length 6 recommended (UI hint, server minimum 4) |
-| FR-A7 | The plaintext PIN row MUST be removed from `app_settings` at migration. The existing PIN value is hashed into the private secrets table first |
+| FR-A7 | The plaintext PIN row MUST be removed from `app_settings`. The existing PIN value is hashed into the private secrets table first (migration `002`); the plaintext row is deleted by the lockdown migration `005`, because the live client reads it (and falls back to `2026` when it is missing) until the new client is deployed (v3.3) |
 | FR-A8 | The token is kept in `sessionStorage` (never `localStorage`); closing the tab ends the session |
 
 ## 6.2 Courses (FR-C)
@@ -478,6 +479,8 @@ Example: lessons 86/100, exam 72, split 50/50 → **79.0**. Split 60/40 → 51.6
 - Primary keys are `uuid` (`gen_random_uuid()`), except `students.id` which stays **text** (`'s' || number`) for backwards compatibility.
 - Errors are raised with `raise exception using errcode = 'P0001', message = 'E_CODE', detail = '...'`. The client maps `error.message` to friendly text (§8.5).
 - Timestamps are `timestamptz`.
+- **Failures that must persist state are returned, not raised (v3.3).** A raised exception rolls back the whole RPC, including any counter update. So wrong-PIN / wrong-code paths update the throttle and **return** `{ok:false, error:'E_…', detail}`; only failures that write nothing raise. `api.js` converts `ok:false` results into `ApiError`. Applies to `teacher_login`, `teacher_change_pin`, and (Phase 2) `exam_check` / `exam_start` / `exam_get_result` / `exam_get_review` / `get_certificate`.
+- `private.fail(code, detail)` coalesces a null detail to `''` (`RAISE ... DETAIL = NULL` is an error in Postgres).
 
 ## 7.2 Schema (reference DDL)
 
@@ -1470,7 +1473,7 @@ create policy read_students on public.students for select to anon
 4. Re-run the **idempotent copy step** from `001` so enrollments match the latest scores.
 5. Merge the PR to `main` → Netlify deploys the new client.
 6. Smoke test: unlock with the old PIN, open a student, save a score, add and delete a test student.
-7. Run `005_security_lockdown`. From now on the old client cannot write.
+7. Run `005_security_lockdown` (also deletes the plaintext PIN row). From now on the old client cannot write.
 8. Run the anon-probe (Appendix C) against production; all probes must be denied.
 9. Owner changes the PIN to the new passphrase through the app.
 10. Lift the freeze.
@@ -1673,6 +1676,12 @@ Confirmed this session: staging project will be created (D-37); defaults for the
 | CSV export used to inject spreadsheet formulas | Neutralize leading `= + - @` (Phase 3) |
 
 ## 14.3 Change log
+### v3.3 (session 4: defects found while implementing task 0.1; all covered by `tests/sql/phase0_core.test.sql`)
+1. **`private.fail()` broke on a null detail.** `RAISE ... DETAIL = NULL` errors in Postgres, so every bare `fail('E_AUTH')` surfaced as "RAISE statement option cannot be null" instead of `E_AUTH`. Fixed with `coalesce(p_detail,'')`.
+2. **Login throttling never persisted.** The reference `teacher_login` updated the failure counter and then raised `E_AUTH`; the raise rolled the update back (verified: 0 rows after 6 failures), so the 5-failure lockout could not trigger. Failure paths now return `{ok:false,error,detail}` (§7.1 convention). Wrong current PIN in `teacher_change_pin` also feeds the throttle.
+3. **Cut-over order weakened the live app.** `002` deleted the plaintext PIN at runbook step 3, while the old client (live until step 5) falls back to `2026` when the row is missing. Deletion moved to `005`.
+4. Added `private.sync_legacy_students()` (idempotent copy, used at cut-over step 4) and revoked write access on the new public tables immediately (before `005`).
+
 ### v3.2 (flexibility, requested by owner in session 3)
 1. **Unit label per course** (D-41, FR-C10): "Day" is no longer hardcoded in UI text.
 2. **Lesson mode and eligibility rule per course** (D-42, FR-C8/C9): supports exam-only courses and teacher-approved eligibility; new `exam_approved` on enrollments; result state `not_eligible` renamed **`not_eligible`**.
@@ -1863,10 +1872,10 @@ Using only the publishable key, every item must be **denied or empty**:
 |---|---|---|---|
 | `000_setup.sql` | 0 | extensions, `private` schema, `private.fail`, `system_params` + `param()` | |
 | `001_courses_enrollments.sql` | 0 | courses (incl. v3.2 columns), enrollments, `enrollment_results`, `institution_settings` + seed, seed `ADAB`, copy students → enrollments | Copy step is idempotent (re-run at cut-over) |
-| `002_auth.sql` | 0 | secrets, sessions, throttle, `require_teacher`, `teacher_login/logout/ping/change_pin`, PIN hashing, plaintext removal | If no PIN row existed, hash `2026` and rotate immediately |
+| `002_auth.sql` | 0 | secrets, sessions, throttle (+ helpers), `require_teacher`, `teacher_login/logout/ping/change_pin`, PIN hashing | Plaintext row is **kept** (live client needs it); removed by `005`. If no PIN row existed, hash `2026` and rotate immediately |
 | `003_roster_rpcs.sql` | 0 | course/roster/score RPCs, lesson-only `recompute_result`, triggers, backfill | |
 | `004_public_access.sql` | 0 | realtime publication, read policies (prepared) | |
-| `005_security_lockdown.sql` | 0 | revoke/RLS/grants (§8.3) | **Run last in Phase 0**, after the new client is live |
+| `005_security_lockdown.sql` | 0 | revoke/RLS/grants (§8.3), **delete plaintext `teacher_pin` row**, re-grant `execute` on every Phase-0 RPC after the blanket revoke | **Run last in Phase 0**, after the new client is live |
 | `006_drop_legacy.sql` | 0 | drop legacy `students` columns | ≥ 7 days after cut-over |
 | `010_exam_tables.sql` | 1 | exams, versions, sections, questions, keys, values view | |
 | `011_exam_builder_rpcs.sql` | 1 | builder RPCs, publish validation | |
@@ -1919,6 +1928,7 @@ Fixed defaults in v1, centralised in `private.system_params` and read with `priv
 | `attempt_grace_seconds` | 15 | `exam_save_answers`, `expire_attempts` |
 | `code_length` | 8 | code generation (alphabet fixed, FR-K8) |
 | `code_bulk_chunk` | 40 | `admin_generate_codes_bulk` |
+| `pin_min_length` | 4 | `teacher_change_pin` |
 | `max_events_per_attempt` | 200 | `exam_log_event` |
 | `max_fill_chars` / `max_essay_chars` | 500 / 20000 | `exam_save_answers` |
 
