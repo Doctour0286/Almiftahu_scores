@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Document version** | 3.4 |
+| **Document version** | 3.5 |
 | **Date** | 2 October 2026 |
 | **Supersedes** | `exam-system-plan.md` (v1) and `exam-system-plan-v2.md` |
 | **Product** | Extension of the existing "Ma'had Miftah al-'Ilm: Score Portal" (single-file web app) |
@@ -39,14 +39,14 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | Phase | Name | Status | Notes | Last updated |
 |---|---|---|---|---|
 | Planning | Requirements & decisions | ✅ | PRD v3.2 complete (§9-14, Appendices A-D; review fixes and v3.2 flexibility changes in §14.3). Open items in §14.1 are non-blocking for Phase 0 | 2 Oct 2026 |
-| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` ✅ (run on staging by the owner, session 5). 0.2 `003_roster_rpcs` written, passing local SQL + concurrency tests (**not yet run on staging**) | 2 Oct 2026 |
+| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` ✅ (run on staging by the owner, session 5). 0.2 `003_roster_rpcs` ✅ (run on staging by the owner, session 5). 0.3 `004_public_access` written, passing local tests (**not yet run on staging**) | 2 Oct 2026 |
 | 1 | Exam builder (versions, sections, questions) | ⬜ | | |
 | 2 | Codes & taking the exam | ⬜ | | |
 | 3 | Marking, scoring & leaderboard | ⬜ | | |
 | 4 | Certificates | ⬜ | Needs institution defaults entered (logo, signatory, wording); per-course overrides optional | |
 | 5 | Polish | ⬜ | | |
 
-**Current task pointer:** *Phase 0, task 0.2 awaiting a staging run: apply `migrations/003_roster_rpcs.sql` in the staging SQL editor (after `000`-`002`, which are done) and paste back any errors or notices. Optional deeper check from a machine with `psql`: `tests/sql/phase0_roster.test.sql` (rolls back; see `tests/README.md`). Next after that: task 0.3 (`004_public_access`), then 0.4 (modular client). Still open from 0.0: Netlify decision (D-36), production backup, passphrase (O-6).*
+**Current task pointer:** *Phase 0, task 0.3 awaiting a staging run: apply `migrations/004_public_access.sql` in the staging SQL editor and paste back any errors or notices (it is additive: it publishes the new tables to realtime and creates read policies that stay inert until `005`). Optional: `tests/sql/phase0_public_access.test.sql` (rolls back). Next after that: task 0.4 (modular client: split `index.html` into `css/` + `js/`, no behavior change). Still open from 0.0: Netlify decision (D-36), production backup, passphrase (O-6).*
 
 ## 0.4 Session log (append-only)
 
@@ -56,7 +56,7 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | 2 | 2 Oct 2026 | Read all uploads; verified GitHub access; owner chose staging project + defaults; completed PRD (§9-14, Appendices A-D); fixed migration numbering, Phase-0 `recompute_result`, `read_students` policy | `PRD.md` (v3.1) | Owner reviews v3.1, answers O-4/O-7/O-8 when convenient, approves Phase 0 start |
 | 3 | 2 Oct 2026 | Owner asked that everything be configurable and a new course creatable any time. Audited the plan; added per-course unit label, lesson mode, eligibility rule, per-course certificate settings with institution defaults, create-course-from-existing, and a system-parameters table | `PRD.md` (v3.2) | Owner reviews v3.2, agrees Netlify (D-36), creates staging project, approves Phase 0 start |
 | 4 | 2 Oct 2026 | Read PRD and `index.html`; baseline commit to `main` (task 0.0); wrote `000`-`002` plus local SQL tests and runner (task 0.1). Found and fixed three defects in the v3.2 reference SQL (see §14.3, v3.3) | `migrations/000-002`, `tests/sql/phase0_core.test.sql`, `tests/tools/*`, this PRD (v3.3) | Owner runs `000`-`002` on staging and pastes output; then task 0.2 |
-| 5 | 2 Oct 2026 | Owner confirmed `000`-`002` ran on staging. Wrote `003`: 12 course/roster/score RPCs, Phase-0 `recompute_result`, triggers, backfill. 167 assertion lines in the roster test file (plus a parallel S/N test) written; they caught one defect (see §14.3, v3.4). Fixed `tests/README.md` (tests are psql scripts; core test is local-only) | `migrations/003_roster_rpcs.sql`, `tests/sql/phase0_roster.test.sql`, `tests/tools/concurrency_sn.sh`, `tests/README.md`, this PRD (v3.4) | Owner applies `003` on staging and pastes output; then task 0.3 |
+| 5 | 2 Oct 2026 | Owner confirmed `000`-`002` ran on staging. Wrote `003`: 12 course/roster/score RPCs, Phase-0 `recompute_result`, triggers, backfill. 167 assertion lines in the roster test file (plus a parallel S/N test) written; they caught one defect (see §14.3, v3.4). Owner ran `003` on staging; pasting the psql-only test into the SQL editor failed on `\set`, so the newer tests were made meta-command-free. Then task 0.3: wrote `004` (realtime publication + inert read policies) and found the PRD's `read_students` policy fails (see v3.5). Fixed `tests/README.md` | `migrations/003_roster_rpcs.sql`, `tests/sql/phase0_roster.test.sql`, `tests/tools/concurrency_sn.sh`, `migrations/004_public_access.sql`, `tests/sql/phase0_public_access.test.sql`, `tests/README.md`, this PRD (v3.5) | Owner applies `004` on staging and pastes output; then task 0.4 |
 
 ## 0.5 Conventions in this document
 - **IDs:** `D-xx` decisions, `FR-xx` functional requirements, `NFR-xx` non-functional, `AC-x.y` acceptance criteria, `E_XXX` error codes.
@@ -1142,10 +1142,10 @@ alter table public.enrollments        enable row level security;
 alter table public.enrollment_results enable row level security;
 create policy read_courses  on public.courses            for select to anon using (true);
 create policy read_students on public.students           for select to anon
-  using (exists (select 1 from public.enrollments e where e.student_id = id and e.active));  -- v3.1: do not expose inactive-only students
+  using (exists (select 1 from public.enrollments e where e.student_id = public.students.id and e.active));  -- v3.1: do not expose inactive-only students
 create policy read_enroll   on public.enrollments        for select to anon using (active);
 create policy read_results  on public.enrollment_results for select to anon
-  using (exists (select 1 from public.enrollments e where e.id = enrollment_id and e.active));
+  using (exists (select 1 from public.enrollments e where e.id = public.enrollment_results.enrollment_id and e.active));
 alter table public.app_settings enable row level security;   -- no policy → no public access
 
 -- Private schema: defense in depth
@@ -1455,7 +1455,7 @@ No codes, PINs, or tokens are written to `localStorage`. Codes are held in memor
 | **0.4 Modular client** | `index.html` split into `css/` + `js/` modules (§10.1) with **no behavior change**; `config.js`; vendored `supabase-js` | Visual regression screenshots (AC-0.13) |
 | **0.5 Port teacher features** | Server login, session token, every write via RPC, `name_ar` fields, bulk Arabic-name screen, Course settings screen (unit label, lesson mode, eligibility rule, create-from-existing for settings), eligibility control in the roster, PIN change via `teacher_change_pin` | Replaces all `sb.from(...).insert/update/delete` calls |
 | **0.6 Port public views** | Course switcher (hidden with one course), reads from `enrollments`/`students`/`enrollment_results`, **tie handling**, **Bonus column fix**, realtime on new tables | Quirks §3.5 items 1, 2, 3 fixed |
-| **0.7 Staging regression** | Full run of Appendix C checklist on staging, anon-probe script, owner walkthrough | Gate for cut-over |
+| **0.7 Staging regression** | Full run of Appendix C checklist on staging, anon-probe script, owner walkthrough. **Also authors `005_security_lockdown`** (no earlier task owns it; it must re-grant every Phase-0 RPC) and dry-runs it on staging after the new client works | Gate for cut-over |
 | **0.8 Production cut-over** | Runbook below | Short teacher-freeze window |
 | **0.9 Cleanup** | `006_drop_legacy`: drop legacy columns on `students` (`days`, `bonus_units`, `sn`, `active`) **after 7 days** of stable operation | Until dropped, legacy columns are stale and must not be trusted |
 
@@ -1464,7 +1464,7 @@ No codes, PINs, or tokens are written to `localStorage`. Codes are held in memor
 **Policy fix.** The §8.3 policy `read_students ... using (true)` would expose names of students whose only enrollments are inactive. Use instead:
 ```sql
 create policy read_students on public.students for select to anon
-  using (exists (select 1 from public.enrollments e where e.student_id = id and e.active));
+  using (exists (select 1 from public.enrollments e where e.student_id = public.students.id and e.active));
 ```
 
 ### Production cut-over runbook (task 0.8)
@@ -1677,6 +1677,13 @@ Confirmed this session: staging project will be created (D-37); defaults for the
 | CSV export used to inject spreadsheet formulas | Neutralize leading `= + - @` (Phase 3) |
 
 ## 14.3 Change log
+### v3.5 (session 5: task 0.3, `004_public_access`)
+1. **PRD policy SQL was broken.** `read_students ... where e.student_id = id` binds `id` to `enrollments.id`; Postgres rejects it at creation (`operator does not exist: text = uuid`). Verified. Fixed in §8.3, §11 and `004` by qualifying columns (`public.students.id`, `public.enrollment_results.enrollment_id`). Rule: in policy and subquery SQL, always qualify columns whose names exist in both tables.
+2. **Policies are created in `004` but inert:** RLS is enabled only by `005`. `tests/sql/phase0_public_access.test.sql` turns RLS on inside a rolled-back transaction and proves AC-0.11 (inactive-only students hidden), that only active enrollments and their results are visible, and that anon cannot write.
+3. **Realtime:** `004` adds `students`, `enrollments`, `courses`, `enrollment_results` to `supabase_realtime` if not already there (skips cleanly if the publication is absent or FOR ALL TABLES).
+4. **Task ownership gap closed:** `005_security_lockdown` is authored in task 0.7 (§11 table).
+5. **Tests** `phase0_roster` and `phase0_public_access` have no psql meta-commands (SQL-editor friendly, unverified there); `phase0_core` remains local-only (README).
+
 ### v3.4 (session 5: task 0.2, `003_roster_rpcs`; the defect below was caught by `tests/sql/phase0_roster.test.sql`)
 1. **A guarded reference to a future table still fails at plan time.** `to_regclass('private.attempts') is not null and exists (select ... from private.attempts ...)` errors with "relation does not exist" in Phase 0, because PL/pgSQL plans the whole statement. The FR-C8 lesson-mode lock therefore checks attempts through `execute` (dynamic SQL). Rule for later migrations: never reference a not-yet-created table statically, even behind a guard.
 2. **API contract choices fixed by `003`:** `admin_save_day.p_day_index` is **zero-based** (matches the JS arrays); `admin_save_course` returns `{course, affected}`; `admin_add_student` returns `{enrollment_id, student_id, sn, duplicate_name}`; `admin_bulk_seed` returns `{added, skipped[], invalid[]}`; `admin_save_day` returns `{days, bonus_units, lesson_pct, status}`. `E_CONFIRM_REQUIRED` fires for changes to units, max score, bonus value, lesson max, weights, pass mark, eligibility rule or lesson mode when enrollments exist (detail = count); grade bands, names, unit labels and `reveal_answers` never need confirmation.
@@ -1883,7 +1890,7 @@ Using only the publishable key, every item must be **denied or empty**:
 | `001_courses_enrollments.sql` | 0 | courses (incl. v3.2 columns), enrollments, `enrollment_results`, `institution_settings` + seed, seed `ADAB`, copy students → enrollments | Copy step is idempotent (re-run at cut-over) |
 | `002_auth.sql` | 0 | secrets, sessions, throttle (+ helpers), `require_teacher`, `teacher_login/logout/ping/change_pin`, PIN hashing | Plaintext row is **kept** (live client needs it); removed by `005`. If no PIN row existed, hash `2026` and rotate immediately |
 | `003_roster_rpcs.sql` | 0 | course/roster/score RPCs, lesson-only `recompute_result`, triggers, backfill | Idempotent. `p_day_index` is zero-based. New students get id `s<max+1>` and filled legacy columns; no `students.sn` collisions |
-| `004_public_access.sql` | 0 | realtime publication, read policies (prepared) | |
+| `004_public_access.sql` | 0 | realtime publication, read policies (prepared) | Idempotent. Policies exist but RLS stays off until `005`; skips the publication step with a notice if `supabase_realtime` is absent |
 | `005_security_lockdown.sql` | 0 | revoke/RLS/grants (§8.3), **delete plaintext `teacher_pin` row**, re-grant `execute` on every Phase-0 RPC after the blanket revoke | **Run last in Phase 0**, after the new client is live |
 | `006_drop_legacy.sql` | 0 | drop legacy `students` columns | ≥ 7 days after cut-over |
 | `010_exam_tables.sql` | 1 | exams, versions, sections, questions, keys, values view | |

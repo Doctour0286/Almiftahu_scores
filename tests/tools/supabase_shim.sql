@@ -20,3 +20,5 @@ insert into public.students(id, sn, name, days, bonus_units, active) values
  ('s3', 3,'Musa Ibrahim','{5,-1,-1,-1,-1,-1,-1,-1,-1,-1}','{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}', true),
  ('s4', 4,'Inactive Person','{1,1,1,1,1,1,1,1,1,1}','{0,0,0,0,0,0,0,0,0,0}', false);
 insert into public.app_settings values ('teacher_pin','test-pin-1234');
+-- Supabase ships this publication; the live app already subscribes to `students`.
+create publication supabase_realtime for table public.students;

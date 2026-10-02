@@ -6,7 +6,6 @@
 -- tests/tools/concurrency_sn.sh), AC-0.8, AC-0.9, AC-0.13 .. AC-0.17.
 -- Section T0.13 asserts exact numbers for the local sample students (s1..s4); it is skipped
 -- automatically when those rows are not present (e.g. on a staging copy of real data).
-\set ON_ERROR_STOP on
 begin;
 
 -- ---------- helpers (session-local) ----------
@@ -44,7 +43,7 @@ begin
   assert length(current_setting('t.tok')) = 64, 'test login failed';
 end $$;
 
-\echo '== T0.6 every admin RPC rejects a bad token =='
+do $$ begin raise notice '== T0.6 every admin RPC rejects a bad token =='; end $$;
 do $$
 declare q text; v_cid text := gen_random_uuid()::text;
 begin
@@ -68,7 +67,7 @@ begin
   end loop;
 end $$;
 
-\echo '== T0.7 lesson results are maintained (AC-0.5) =='
+do $$ begin raise notice '== T0.7 lesson results are maintained (AC-0.5) =='; end $$;
 do $$
 declare v_bad int;
 begin
@@ -90,7 +89,7 @@ begin
          'Phase 0 results carry no exam fields';
 end $$;
 
-\echo '== T0.8 courses: create, validate, unit label, exam-only, copy (AC-0.13/0.14/0.17) =='
+do $$ begin raise notice '== T0.8 courses: create, validate, unit label, exam-only, copy (AC-0.13/0.14/0.17) =='; end $$;
 do $$
 declare r jsonb; c jsonb; v_week uuid; v_copy uuid; v_ad uuid;
 begin
@@ -160,7 +159,7 @@ begin
   assert pg_temp.err(format('select public.admin_set_course_status(%L, %L, %L)', pg_temp.t(), gen_random_uuid(), 'active')) = 'E_NOT_FOUND', 'status of unknown course';
 end $$;
 
-\echo '== T0.9 roster: add / enroll / bulk seed / rename / active / list =='
+do $$ begin raise notice '== T0.9 roster: add / enroll / bulk seed / rename / active / list =='; end $$;
 do $$
 declare
   v_week uuid := pg_temp.cid('WEEKS'); v_blank uuid := pg_temp.cid('BLANK'); v_ex uuid := pg_temp.cid('EXAM');
@@ -254,7 +253,7 @@ begin
   perform public.admin_set_course_status(pg_temp.t(), v_ex, 'active');
 end $$;
 
-\echo '== T0.10 lesson scores (AC-0.8) and eligibility rules (AC-0.16) =='
+do $$ begin raise notice '== T0.10 lesson scores (AC-0.8) and eligibility rules (AC-0.16) =='; end $$;
 do $$
 declare
   v_score uuid; v_enr uuid; v_enr2 uuid; r jsonb; i int; v_ex uuid := pg_temp.cid('EXAM');
@@ -327,7 +326,7 @@ begin
   end;
 end $$;
 
-\echo '== T0.11 course changes: confirmation, recompute, resize, locks (AC-0.9, 0.15) =='
+do $$ begin raise notice '== T0.11 course changes: confirmation, recompute, resize, locks (AC-0.9, 0.15) =='; end $$;
 do $$
 declare
   v_upd uuid; v_e1 uuid; v_e2 uuid; r jsonb; v_c uuid; v_e uuid;
@@ -417,7 +416,7 @@ begin
   assert pg_temp.save_err('{"id":"garbage","name":"x"}') = 'E_VALIDATION', 'malformed course id';
 end $$;
 
-\echo '== T0.12 delete student (FR-R6) =='
+do $$ begin raise notice '== T0.12 delete student (FR-R6) =='; end $$;
 do $$
 declare v_c uuid := pg_temp.cid('UPD'); r jsonb; v_sid text; v_enr uuid;
 begin
@@ -439,7 +438,7 @@ begin
   drop table private.certificates;
 end $$;
 
-\echo '== T0.13 exact numbers for the local sample data (skipped on real data) =='
+do $$ begin raise notice '== T0.13 exact numbers for the local sample data (skipped on real data) =='; end $$;
 do $$
 declare v_ad uuid := pg_temp.cid('ADAB'); r jsonb;
 begin
@@ -456,7 +455,7 @@ begin
   assert (select count(*) from jsonb_array_elements(r)) >= 4 and (select bool_or(not (x->>'active')::boolean) from jsonb_array_elements(r) x), 'ADAB roster lists the inactive student';
 end $$;
 
-\echo '== T0.14 anon access to the new surface =='
+do $$ begin raise notice '== T0.14 anon access to the new surface =='; end $$;
 set role anon;
 do $$
 declare ok_denied boolean; v_code text;
@@ -483,4 +482,4 @@ end $$;
 reset role;
 
 rollback;
-\echo '== ALL PHASE 0 ROSTER TESTS PASSED (transaction rolled back) =='
+do $$ begin raise notice '== ALL PHASE 0 ROSTER TESTS PASSED (transaction rolled back) =='; end $$;
