@@ -29,7 +29,7 @@ This PRD is the **single source of truth** for the project. It is written so tha
 8. **Update this document at the end of every session:** the tracker (§0.3), the session log (§0.4), and any decision or open item that changed. A PRD that is out of date defeats its purpose.
 9. **Preserve the visual identity** (emerald and gold, Amiri + Inter, existing component classes). See §9.1.
 10. **Security rules are non-negotiable** (§8). If a request conflicts with them, say so and propose a safe alternative.
-11. **Repository workflow (v3.1):** the project lives in a GitHub repo. Work on a branch, open a pull request, keep `main` deployable. If the owner shares a scoped, short-lived access token for a session, use it per command (auth header), never write it into git config, remote URLs, or any committed file, and never put secrets in the repo.
+11. **Repository workflow (v3.1, amended session 4):** the project lives in a GitHub repo. The owner has asked for commits **directly to `main`** (no branches or PRs); keep `main` deployable. If the owner shares a scoped, short-lived access token for a session, use it per command (auth header), never write it into git config, remote URLs, or any committed file, and never put secrets in the repo.
 12. **Never run lockdown (`005`) before the new client is deployed** (§11, Phase 0 cut-over runbook).
 
 ## 0.3 Status tracker (update every session)
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | 4 | Certificates | ⬜ | Needs institution defaults entered (logo, signatory, wording); per-course overrides optional | |
 | 5 | Polish | ⬜ | | |
 
-**Current task pointer:** *Phase 0, task 0.1 awaiting staging run: owner applies `migrations/000`-`002` in the staging Supabase SQL editor (in order) and pastes back any errors. Next after that: task 0.2 (`003_roster_rpcs`). Still open from 0.0: staging project (O-9), Netlify decision (D-36), production backup, passphrase (O-6).*
+**Current task pointer:** *Phase 0, task 0.1 awaiting staging run: on a fresh staging project first run `migrations/staging_only/staging_legacy_schema.sql` (creates the legacy `students`/`app_settings` tables; then import production rows or seed test rows), then apply `migrations/000`-`002` in order and paste back any errors. Next after that: task 0.2 (`003_roster_rpcs`). Still open from 0.0: staging project (O-9), Netlify decision (D-36), production backup, passphrase (O-6).*
 
 ## 0.4 Session log (append-only)
 
@@ -231,7 +231,7 @@ Helpers: `escapeHtml`, `escapeAttr`, `showStatus(msg, isError)`, `clearStatus()`
 | D-35 | Archived course: hidden from the main switcher (shown under "Archived"), no new enrollments/codes, existing results and certificate verification remain valid | 🟡 |
 | D-36 | **Hosting: Netlify** (static, no build). `main` = production, every PR gets a deploy preview. Vercel remains an equivalent alternative | 🟡 recommended by assistant, awaiting owner agreement |
 | D-37 | **Two Supabase projects: staging and production.** Environment chosen by hostname in `js/config.js`; previews and localhost always use staging | ✅ staging project (owner) · 🟡 mechanism |
-| D-38 | **Work in pull requests** from short-lived branches into `main`; SQL delivered as numbered migration files in `/migrations/`; the owner runs them (staging first) | 🟡 |
+| D-38 | ~~Work in pull requests from short-lived branches~~ **Owner override (session 4): commit and push directly to `main`; no branches/PRs.** SQL is still delivered as numbered migration files in `/migrations/`; the owner runs them (staging first). Because `main` is production, SQL migrations are NOT auto-applied: only the owner applies them | ✅ (session 4) |
 | D-39 | **Vendor pinned `supabase-js`** (and the QR library) under `/vendor` instead of loading a floating CDN version | 🟡 |
 | D-40 | **First-course defaults accepted:** short code `ADAB`, split 50/50, pass mark 60%, exam duration 60 min, bands Excellent ≥ 90 / Very Good ≥ 80 / Good ≥ 70 / Pass ≥ pass mark | ✅ (session 2) |
 | D-41 | **Unit label per course:** each course names its lesson unit (`unit_label`, default "Day", optional Arabic label). All UI text ("Day 3", "Full Sheet" headers, score editor) uses it | ✅ (session 3) |

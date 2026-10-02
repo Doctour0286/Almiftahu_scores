@@ -3,6 +3,15 @@
 -- and an idempotent copy of the legacy `students` rows into enrollments.
 -- Additive: the live app keeps reading/writing `students` and is unaffected.
 
+-- Preflight: this migration copies the legacy tables. On a fresh staging project they don't exist
+-- yet: run migrations/staging_only/staging_legacy_schema.sql first (and import production rows).
+do $$ begin
+  if to_regclass('public.students') is null or to_regclass('public.app_settings') is null then
+    raise exception 'Legacy tables public.students / public.app_settings not found. '
+      'On staging, run migrations/staging_only/staging_legacy_schema.sql first, then re-run this file.';
+  end if;
+end $$;
+
 create table if not exists public.courses (
   id               uuid primary key default gen_random_uuid(),
   code             text not null unique check (code ~ '^[A-Z0-9-]{2,12}$'),
