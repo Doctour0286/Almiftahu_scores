@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Document version** | 3.3 |
+| **Document version** | 3.4 |
 | **Date** | 2 October 2026 |
 | **Supersedes** | `exam-system-plan.md` (v1) and `exam-system-plan-v2.md` |
 | **Product** | Extension of the existing "Ma'had Miftah al-'Ilm: Score Portal" (single-file web app) |
@@ -39,14 +39,14 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | Phase | Name | Status | Notes | Last updated |
 |---|---|---|---|---|
 | Planning | Requirements & decisions | ✅ | PRD v3.2 complete (§9-14, Appendices A-D; review fixes and v3.2 flexibility changes in §14.3). Open items in §14.1 are non-blocking for Phase 0 | 2 Oct 2026 |
-| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` written and passing local SQL tests (PR open, **not yet run on staging**) | 2 Oct 2026 |
+| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` ✅ (run on staging by the owner, session 5). 0.2 `003_roster_rpcs` written, passing local SQL + concurrency tests (**not yet run on staging**) | 2 Oct 2026 |
 | 1 | Exam builder (versions, sections, questions) | ⬜ | | |
 | 2 | Codes & taking the exam | ⬜ | | |
 | 3 | Marking, scoring & leaderboard | ⬜ | | |
 | 4 | Certificates | ⬜ | Needs institution defaults entered (logo, signatory, wording); per-course overrides optional | |
 | 5 | Polish | ⬜ | | |
 
-**Current task pointer:** *Phase 0, task 0.1 awaiting staging run: on a fresh staging project first run `migrations/staging_only/staging_legacy_schema.sql` (creates the legacy `students`/`app_settings` tables; then import production rows or seed test rows), then apply `migrations/000`-`002` in order and paste back any errors. Next after that: task 0.2 (`003_roster_rpcs`). Still open from 0.0: staging project (O-9), Netlify decision (D-36), production backup, passphrase (O-6).*
+**Current task pointer:** *Phase 0, task 0.2 awaiting a staging run: apply `migrations/003_roster_rpcs.sql` in the staging SQL editor (after `000`-`002`, which are done) and paste back any errors or notices. Optional deeper check from a machine with `psql`: `tests/sql/phase0_roster.test.sql` (rolls back; see `tests/README.md`). Next after that: task 0.3 (`004_public_access`), then 0.4 (modular client). Still open from 0.0: Netlify decision (D-36), production backup, passphrase (O-6).*
 
 ## 0.4 Session log (append-only)
 
@@ -56,6 +56,7 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | 2 | 2 Oct 2026 | Read all uploads; verified GitHub access; owner chose staging project + defaults; completed PRD (§9-14, Appendices A-D); fixed migration numbering, Phase-0 `recompute_result`, `read_students` policy | `PRD.md` (v3.1) | Owner reviews v3.1, answers O-4/O-7/O-8 when convenient, approves Phase 0 start |
 | 3 | 2 Oct 2026 | Owner asked that everything be configurable and a new course creatable any time. Audited the plan; added per-course unit label, lesson mode, eligibility rule, per-course certificate settings with institution defaults, create-course-from-existing, and a system-parameters table | `PRD.md` (v3.2) | Owner reviews v3.2, agrees Netlify (D-36), creates staging project, approves Phase 0 start |
 | 4 | 2 Oct 2026 | Read PRD and `index.html`; baseline commit to `main` (task 0.0); wrote `000`-`002` plus local SQL tests and runner (task 0.1). Found and fixed three defects in the v3.2 reference SQL (see §14.3, v3.3) | `migrations/000-002`, `tests/sql/phase0_core.test.sql`, `tests/tools/*`, this PRD (v3.3) | Owner runs `000`-`002` on staging and pastes output; then task 0.2 |
+| 5 | 2 Oct 2026 | Owner confirmed `000`-`002` ran on staging. Wrote `003`: 12 course/roster/score RPCs, Phase-0 `recompute_result`, triggers, backfill. 167 assertion lines in the roster test file (plus a parallel S/N test) written; they caught one defect (see §14.3, v3.4). Fixed `tests/README.md` (tests are psql scripts; core test is local-only) | `migrations/003_roster_rpcs.sql`, `tests/sql/phase0_roster.test.sql`, `tests/tools/concurrency_sn.sh`, `tests/README.md`, this PRD (v3.4) | Owner applies `003` on staging and pastes output; then task 0.3 |
 
 ## 0.5 Conventions in this document
 - **IDs:** `D-xx` decisions, `FR-xx` functional requirements, `NFR-xx` non-functional, `AC-x.y` acceptance criteria, `E_XXX` error codes.
@@ -1676,6 +1677,14 @@ Confirmed this session: staging project will be created (D-37); defaults for the
 | CSV export used to inject spreadsheet formulas | Neutralize leading `= + - @` (Phase 3) |
 
 ## 14.3 Change log
+### v3.4 (session 5: task 0.2, `003_roster_rpcs`; the defect below was caught by `tests/sql/phase0_roster.test.sql`)
+1. **A guarded reference to a future table still fails at plan time.** `to_regclass('private.attempts') is not null and exists (select ... from private.attempts ...)` errors with "relation does not exist" in Phase 0, because PL/pgSQL plans the whole statement. The FR-C8 lesson-mode lock therefore checks attempts through `execute` (dynamic SQL). Rule for later migrations: never reference a not-yet-created table statically, even behind a guard.
+2. **API contract choices fixed by `003`:** `admin_save_day.p_day_index` is **zero-based** (matches the JS arrays); `admin_save_course` returns `{course, affected}`; `admin_add_student` returns `{enrollment_id, student_id, sn, duplicate_name}`; `admin_bulk_seed` returns `{added, skipped[], invalid[]}`; `admin_save_day` returns `{days, bonus_units, lesson_pct, status}`. `E_CONFIRM_REQUIRED` fires for changes to units, max score, bonus value, lesson max, weights, pass mark, eligibility rule or lesson mode when enrollments exist (detail = count); grade bands, names, unit labels and `reveal_answers` never need confirmation.
+3. **Legacy columns for new students:** `students.sn` mirrors the numeric part of the new id and the legacy arrays are written as unset, so a legacy NOT NULL constraint holds. These columns are stale by design (v3.1 #7) and dropped in `006`.
+4. `p_copy_exam` is accepted and ignored until Phase 1. Certificate-settings content validation (FR-V7) arrives in Phase 4; Phase 0 only requires a JSON object.
+5. New system parameter `bulk_seed_max_lines` (Appendix D.3).
+6. `tests/README.md` corrected: SQL tests are psql scripts, `phase0_core` is local-only (it changes the PIN), `phase0_roster` rolls back and is staging-safe.
+
 ### v3.3 (session 4: defects found while implementing task 0.1; all covered by `tests/sql/phase0_core.test.sql`)
 1. **`private.fail()` broke on a null detail.** `RAISE ... DETAIL = NULL` errors in Postgres, so every bare `fail('E_AUTH')` surfaced as "RAISE statement option cannot be null" instead of `E_AUTH`. Fixed with `coalesce(p_detail,'')`.
 2. **Login throttling never persisted.** The reference `teacher_login` updated the failure counter and then raised `E_AUTH`; the raise rolled the update back (verified: 0 rows after 6 failures), so the 5-failure lockout could not trigger. Failure paths now return `{ok:false,error,detail}` (§7.1 convention). Wrong current PIN in `teacher_change_pin` also feeds the throttle.
@@ -1873,7 +1882,7 @@ Using only the publishable key, every item must be **denied or empty**:
 | `000_setup.sql` | 0 | extensions, `private` schema, `private.fail`, `system_params` + `param()` | |
 | `001_courses_enrollments.sql` | 0 | courses (incl. v3.2 columns), enrollments, `enrollment_results`, `institution_settings` + seed, seed `ADAB`, copy students → enrollments | Copy step is idempotent (re-run at cut-over) |
 | `002_auth.sql` | 0 | secrets, sessions, throttle (+ helpers), `require_teacher`, `teacher_login/logout/ping/change_pin`, PIN hashing | Plaintext row is **kept** (live client needs it); removed by `005`. If no PIN row existed, hash `2026` and rotate immediately |
-| `003_roster_rpcs.sql` | 0 | course/roster/score RPCs, lesson-only `recompute_result`, triggers, backfill | |
+| `003_roster_rpcs.sql` | 0 | course/roster/score RPCs, lesson-only `recompute_result`, triggers, backfill | Idempotent. `p_day_index` is zero-based. New students get id `s<max+1>` and filled legacy columns; no `students.sn` collisions |
 | `004_public_access.sql` | 0 | realtime publication, read policies (prepared) | |
 | `005_security_lockdown.sql` | 0 | revoke/RLS/grants (§8.3), **delete plaintext `teacher_pin` row**, re-grant `execute` on every Phase-0 RPC after the blanket revoke | **Run last in Phase 0**, after the new client is live |
 | `006_drop_legacy.sql` | 0 | drop legacy `students` columns | ≥ 7 days after cut-over |
@@ -1931,6 +1940,7 @@ Fixed defaults in v1, centralised in `private.system_params` and read with `priv
 | `pin_min_length` | 4 | `teacher_change_pin` |
 | `max_events_per_attempt` | 200 | `exam_log_event` |
 | `max_fill_chars` / `max_essay_chars` | 500 / 20000 | `exam_save_answers` |
+| `bulk_seed_max_lines` | 1000 | `admin_bulk_seed` |
 
 ## D.4 Hardening checklist
 - Strong passphrase at cut-over (O-6).

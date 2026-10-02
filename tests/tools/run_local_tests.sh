@@ -9,3 +9,4 @@ psql -q -d postgres -c "drop database if exists $DB" -c "create database $DB"
 psql -q -v ON_ERROR_STOP=1 -d "$DB" -f tests/tools/supabase_shim.sql
 for f in migrations/[0-9]*.sql; do echo ">> $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
 for f in tests/sql/*.test.sql; do echo ">> $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
+echo ">> tests/tools/concurrency_sn.sh"; DB="$DB" tests/tools/concurrency_sn.sh
