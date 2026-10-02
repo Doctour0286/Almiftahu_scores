@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | 4 | Certificates | ⬜ | Needs institution defaults entered (logo, signatory, wording); per-course overrides optional | |
 | 5 | Polish | ⬜ | | |
 
-**Current task pointer:** *Phase 0, task 0.1 awaiting staging run: owner applies `migrations/000`-`002` in the staging Supabase SQL editor (in order) and pastes back any errors. Next after that: task 0.2 (`003_roster_rpcs`). Still open from 0.0: staging project (O-9), Netlify decision (D-36), production backup, passphrase (O-6).*
+**Current task pointer:** *Phase 0, task 0.1 awaiting staging run: on a fresh staging project first run `migrations/staging_only/staging_legacy_schema.sql` (creates the legacy `students`/`app_settings` tables; then import production rows or seed test rows), then apply `migrations/000`-`002` in order and paste back any errors. Next after that: task 0.2 (`003_roster_rpcs`). Still open from 0.0: staging project (O-9), Netlify decision (D-36), production backup, passphrase (O-6).*
 
 ## 0.4 Session log (append-only)
 
