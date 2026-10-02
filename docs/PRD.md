@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Document version** | 3.5 |
+| **Document version** | 3.6 |
 | **Date** | 2 October 2026 |
 | **Supersedes** | `exam-system-plan.md` (v1) and `exam-system-plan-v2.md` |
 | **Product** | Extension of the existing "Ma'had Miftah al-'Ilm: Score Portal" (single-file web app) |
@@ -39,14 +39,14 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | Phase | Name | Status | Notes | Last updated |
 |---|---|---|---|---|
 | Planning | Requirements & decisions | ✅ | PRD v3.2 complete (§9-14, Appendices A-D; review fixes and v3.2 flexibility changes in §14.3). Open items in §14.1 are non-blocking for Phase 0 | 2 Oct 2026 |
-| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` ✅ (run on staging by the owner, session 5). 0.2 `003_roster_rpcs` ✅ (run on staging by the owner, session 5). 0.3 `004_public_access` ✅ (run on staging by the owner, session 6, ran successfully). 0.4 modular client next | 2 Oct 2026 |
+| 0 | Foundation (security, courses, modular refactor) | 🟦 | 0.0 baseline on `main` ✅. 0.1 core migrations `000`-`002` ✅ (run on staging by the owner, session 5). 0.2 `003_roster_rpcs` ✅ (run on staging by the owner, session 5). 0.3 `004_public_access` ✅ (run on staging by the owner, session 6, ran successfully). 0.4 modular client ✅ (session 7: `index.html` split into `css/base.css` + `js/*.js`, vendored `supabase-js` 2.117.2, `js/config.js`; behavior verified identical to the original in jsdom; **owner still to do the AC-0.12 screenshot comparison in a real browser**). 0.5 port teacher features next | 2 Oct 2026 |
 | 1 | Exam builder (versions, sections, questions) | ⬜ | | |
 | 2 | Codes & taking the exam | ⬜ | | |
 | 3 | Marking, scoring & leaderboard | ⬜ | | |
 | 4 | Certificates | ⬜ | Needs institution defaults entered (logo, signatory, wording); per-course overrides optional | |
 | 5 | Polish | ⬜ | | |
 
-**Current task pointer:** *Phase 0, task 0.4 (modular client: split `index.html` into `css/` + `js/` modules per §10.1, `js/config.js`, vendored pinned `supabase-js`, **no behavior change**; AC-0.12 screenshot comparison). Plan to be agreed with the owner before implementing. Still open from 0.0: Netlify decision (D-36), production backup, passphrase (O-6). `005_security_lockdown` is authored in task 0.7 and must not be run before the new client is deployed.*
+**Current task pointer:** *Phase 0, task 0.5 (port teacher features: server login and session token, every write via RPC, `name_ar` fields, bulk Arabic-name screen, Course settings screen, eligibility control, PIN change via `teacher_change_pin`; replaces all `sb.from(...).insert/update/delete`). Plan to be agreed with the owner before implementing. Before or alongside: owner runs the AC-0.12 screenshot comparison for 0.4 (360/768/1280 px, light and dark; staging via `localhost` or a Netlify deploy preview) and answers O-10 (production hostname). Still open from 0.0: Netlify decision (D-36), production backup, passphrase (O-6). `005_security_lockdown` is authored in task 0.7 and must not be run before the new client is deployed.*
 
 ## 0.4 Session log (append-only)
 
@@ -58,6 +58,7 @@ Legend: ⬜ not started · 🟦 in progress · ✅ done · ⛔ blocked
 | 4 | 2 Oct 2026 | Read PRD and `index.html`; baseline commit to `main` (task 0.0); wrote `000`-`002` plus local SQL tests and runner (task 0.1). Found and fixed three defects in the v3.2 reference SQL (see §14.3, v3.3) | `migrations/000-002`, `tests/sql/phase0_core.test.sql`, `tests/tools/*`, this PRD (v3.3) | Owner runs `000`-`002` on staging and pastes output; then task 0.2 |
 | 5 | 2 Oct 2026 | Owner confirmed `000`-`002` ran on staging. Wrote `003`: 12 course/roster/score RPCs, Phase-0 `recompute_result`, triggers, backfill. 167 assertion lines in the roster test file (plus a parallel S/N test) written; they caught one defect (see §14.3, v3.4). Owner ran `003` on staging; pasting the psql-only test into the SQL editor failed on `\set`, so the newer tests were made meta-command-free. Then task 0.3: wrote `004` (realtime publication + inert read policies) and found the PRD's `read_students` policy fails (see v3.5). Fixed `tests/README.md` | `migrations/003_roster_rpcs.sql`, `tests/sql/phase0_roster.test.sql`, `tests/tools/concurrency_sn.sh`, `migrations/004_public_access.sql`, `tests/sql/phase0_public_access.test.sql`, `tests/README.md`, this PRD (v3.5) | Owner applies `004` on staging and pastes output; then task 0.4 |
 | 6 | 2 Oct 2026 | Read the repo and PRD; owner confirmed `004` ran successfully on staging. Updated tracker and pointer | `docs/PRD.md` | Agree the task 0.4 plan, then implement |
+| 7 | 2 Oct 2026 | Read repo and PRD; agreed the task 0.4 plan; owner confirmed the project hard-coded in `index.html` is **production** and supplied the staging URL and publishable key. Task 0.4: split the inline `<style>` and `<script>` into `css/base.css` and `js/{config,api,state,ui,portal,scores,auth,roster,main}.js` with an AST-based splitter (no hand retyping); shared `let` variables became one exported `state` object (ES modules cannot reassign imported bindings); vendored `supabase-js` 2.117.2; `config.js` selects the environment (deviation recorded in v3.6); staging badge. Verified in jsdom with a fake PostgREST backend: original script vs new modules gave **byte-identical** results over a 35-step scripted session (all DOM snapshots, every network request, final data), plus ESLint `no-undef` clean. No real browser was available | `css/base.css`, `js/*.js`, `vendor/*`, `index.html` (now a shell), this PRD (v3.6) | Owner: AC-0.12 screenshots in a real browser, answer O-10; then agree the task 0.5 plan |
 
 ## 0.5 Conventions in this document
 - **IDs:** `D-xx` decisions, `FR-xx` functional requirements, `NFR-xx` non-functional, `AC-x.y` acceptance criteria, `E_XXX` error codes.
@@ -143,6 +144,7 @@ Individual teacher accounts · student passwords/accounts · multiple exams per 
 - Supabase JS v2 loaded from `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm`.
 - Supabase project URL: `https://vnqgxopexirycynuybyc.supabase.co`. The **publishable (anon) key is embedded in the source** (public by design). The `service_role` key MUST NEVER be placed in the client.
 - Fonts: Google Fonts `Amiri` (Arabic/serif display) and `Inter` (UI).
+- **Since task 0.4 (v3.6)** the code is no longer one file: `index.html` is a shell that links `css/base.css` and loads `js/main.js` (ES modules, no inline script). `supabase-js` is vendored at 2.117.2 (`vendor/`), not loaded from the CDN. Behavior, data access (direct `sb.from(...)` calls) and the client-side PIN check are unchanged until task 0.5. The URL and key above are now the `production` entry in `js/config.js`.
 
 ## 3.2 Database (inferred from code)
 
@@ -1395,6 +1397,7 @@ Modules import each other with relative paths. `index.html` contains **no inline
 - Two Supabase projects: **staging** and **production**. Both URLs and publishable keys live in `js/config.js` (public by design). The `service_role` key appears nowhere in the repo or client.
 - Environment is chosen by hostname: production domain → production; everything else (`localhost`, Netlify deploy previews and branch deploys) → **staging**. This guarantees a preview build can never write to live data.
 - The environment name is shown as a small badge in the header on non-production, so nobody mistakes staging for the real portal.
+- **Temporary deviation (v3.6, until O-10 is answered):** the production hostname is unknown, so `config.js` currently treats only `localhost`, `127.0.0.1`, `[::1]`, `*.localhost`, `file://` and hostnames containing `--` (Netlify deploy-preview and branch-deploy hosts) as **staging**, and every other host as production. This is the opposite default to the rule above, chosen so that pushing 0.4 cannot silently repoint the live site at staging. When the production domain is known, switch to a `PRODUCTION_HOSTS` allow-list so unknown hosts fall back to staging as intended.
 
 ## 10.3 `api.js` contract
 ```js
@@ -1453,7 +1456,7 @@ No codes, PINs, or tokens are written to `localStorage`. Codes are held in memor
 | **0.1 Core migrations** | `000_setup` (incl. `system_params` + `param()`), `001_courses_enrollments` (incl. `enrollment_results`, all v3.2 course columns, `institution_settings` seed, seed course `ADAB`, idempotent copy of students → enrollments), `002_auth` (PIN hash, sessions, throttle, `teacher_login/logout/ping/change_pin`) | Run on staging; SQL tests T0.1-T0.4 |
 | **0.2 Roster & scoring RPCs** | `003_roster_rpcs`: `admin_save_course`, `admin_set_course_status`, `admin_list_roster`, `admin_list_students_all`, `admin_add_student`, `admin_enroll_student`, `admin_bulk_seed`, `admin_update_student`, `admin_set_active`, `admin_delete_student`, `admin_save_day`, `admin_set_exam_approval`; **Phase-0 `recompute_result`** (lesson part only, see note below) + triggers + backfill of `enrollment_results` | S/N assigned inside the DB with a row lock |
 | **0.3 Public access prep** | `004_public_access`: realtime publication entries, `read_*` policies prepared but **not yet restricting writes** | Lockdown itself is `005`, applied last |
-| **0.4 Modular client** | `index.html` split into `css/` + `js/` modules (§10.1) with **no behavior change**; `config.js`; vendored `supabase-js` | Visual regression screenshots (AC-0.13) |
+| **0.4 Modular client** | `index.html` split into `css/` + `js/` modules (§10.1) with **no behavior change**; `config.js`; vendored `supabase-js` | Visual regression screenshots (AC-0.12). ✅ done in session 7 except the owner's real-browser screenshot comparison |
 | **0.5 Port teacher features** | Server login, session token, every write via RPC, `name_ar` fields, bulk Arabic-name screen, Course settings screen (unit label, lesson mode, eligibility rule, create-from-existing for settings), eligibility control in the roster, PIN change via `teacher_change_pin` | Replaces all `sb.from(...).insert/update/delete` calls |
 | **0.6 Port public views** | Course switcher (hidden with one course), reads from `enrollments`/`students`/`enrollment_results`, **tie handling**, **Bonus column fix**, realtime on new tables | Quirks §3.5 items 1, 2, 3 fixed |
 | **0.7 Staging regression** | Full run of Appendix C checklist on staging, anon-probe script, owner walkthrough. **Also authors `005_security_lockdown`** (no earlier task owns it; it must re-grant every Phase-0 RPC) and dry-runs it on staging after the new client works | Gate for cut-over |
@@ -1660,7 +1663,8 @@ System-parameters editing screen (v1: edit `private.system_params` by SQL, D-45)
 | O-6 | New passphrase to replace `2026` | Owner chooses; never pasted into chat | Phase 0 cut-over |
 | O-7 | Tell students that leaving the exam page is logged (recommended for transparency, no penalty) | Disclose 🟡 | Phase 2 |
 | O-8 | **Custom domain** for production before issuing certificates (the printed verification URL must stay valid) | none yet | Phase 4 |
-| O-9 | Staging Supabase project created | Owner action | Phase 0.0 |
+| O-9 | Staging Supabase project created | ✅ done (staging URL and publishable key in `js/config.js`) | Phase 0.0 |
+| O-10 | **Production hostname** (where the live portal is served) so `config.js` can use a `PRODUCTION_HOSTS` allow-list (§10.2) | Unknown hosts currently resolve to production (v3.6 deviation) | Before task 0.8 |
 
 Confirmed this session: staging project will be created (D-37); defaults for the first course accepted (ADAB, 50/50, pass 60%, 60 minutes, bands 90/80/70/pass); hosting recommendation Netlify pending owner agreement (D-36).
 
@@ -1678,6 +1682,15 @@ Confirmed this session: staging project will be created (D-37); defaults for the
 | CSV export used to inject spreadsheet formulas | Neutralize leading `= + - @` (Phase 3) |
 
 ## 14.3 Change log
+### v3.6 (session 7: task 0.4, modular client)
+1. **Module layout as built:** `css/base.css`; `js/config.js` (environments, constants), `api.js` (client only; the `rpc()` wrapper of §10.3 arrives with task 0.5), `state.js` (shared `state` object plus pure data helpers `computeTotal`, `daysToDb`, `daysFromDb`, `normalizeStudent`, `nextSN`), `ui.js` (status banner, icon, escaping), `portal.js`, `scores.js`, `auth.js`, `roster.js`, `main.js` (data loading, realtime, tab routing, bootstrap). `courses.js` and the later modules are created in their own tasks. `index.html` has no inline script or style.
+2. **Shared mutable state became `state.<name>`.** ES modules cannot reassign an imported `let`, so `allStudents`, `students`, `entryOpenId`, `renamingId`, `teacherUnlocked`, `pendingConfirm`, `seedingInProgress`, `teacherPin`, `editingStudentId` and `editingDayIndex` live on one exported object. Rule for later tasks: never destructure these into locals that outlive an `await`.
+3. **Module cycles are intentional and safe:** `main`, `auth`, `portal`, `scores` and `roster` import each other's *function declarations* (used only at call time). Do not export or read a non-function binding across that cycle at module top level. `config.js`, `ui.js` and `state.js` have no cycles.
+4. **Environment selection deviates from §10.2 for now** (see §10.2 and O-10). Staging shows a red `staging` badge in the header; production renders exactly as before.
+5. **Vendored `supabase-js` 2.117.2** bundled to one minified ES module (`vendor/README.md` documents the rebuild). The previous floating `@2` CDN import is gone.
+6. **Verification method and its limit.** A jsdom harness (outside the repo) ran the original inline script (CDN import pointed at the vendored bundle) and the new modules against the same fake PostgREST backend through 35 scripted steps (search, modals, wrong and right PIN, add, bulk seed, rename, inactivate, score editor incl. invalid and cleared values, PIN change, delete, lock). All snapshots, every request (method, URL, body, key) and the final data were byte-identical; ESLint `no-undef` is clean. Not covered: real-browser layout, CSS loading and fonts, and live Realtime delivery, hence the owner's AC-0.12 screenshot step. Note the original's known races (client-side `nextSN`, no tie handling, raw bonus array) are preserved on purpose; they are fixed in 0.5/0.6.
+7. **PRD fix:** the §11 task table referred to the screenshot criterion as AC-0.13; it is AC-0.12 (AC-0.13 is the second-course criterion).
+
 ### v3.5 (session 5: task 0.3, `004_public_access`)
 1. **PRD policy SQL was broken.** `read_students ... where e.student_id = id` binds `id` to `enrollments.id`; Postgres rejects it at creation (`operator does not exist: text = uuid`). Verified. Fixed in §8.3, §11 and `004` by qualifying columns (`public.students.id`, `public.enrollment_results.enrollment_id`). Rule: in policy and subquery SQL, always qualify columns whose names exist in both tables.
 2. **Policies are created in `004` but inert:** RLS is enabled only by `005`. `tests/sql/phase0_public_access.test.sql` turns RLS on inside a rolled-back transaction and proves AC-0.11 (inactive-only students hidden), that only active enrollments and their results are visible, and that anon cannot write.
