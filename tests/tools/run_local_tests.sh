@@ -16,3 +16,4 @@ echo ">> migrations/005_security_lockdown.sql (1st run)"; psql -q -v ON_ERROR_ST
 echo ">> migrations/005_security_lockdown.sql (2nd run, idempotent)"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f migrations/005_security_lockdown.sql
 echo ">> tests/sql/phase0_lockdown.test.sql"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f tests/sql/phase0_lockdown.test.sql
 echo ">> tests/tools/concurrency_sn.sh (after lockdown)"; DB="$DB" tests/tools/concurrency_sn.sh
+echo ">> tests/tools/reverse_sync_roundtrip.sh (own database, pre-005 state)"; tests/tools/reverse_sync_roundtrip.sh

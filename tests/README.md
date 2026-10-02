@@ -15,3 +15,7 @@ Staging with `psql`, after applying a migration (replace the URI):
 ```
 psql "postgresql://postgres:<password>@<host>:5432/postgres" -v ON_ERROR_STOP=1 -f tests/sql/phase0_roster.test.sql
 ```
+
+## Rollback script
+
+`tests/tools/reverse_sync_roundtrip.sh` tests `migrations/rollback/reverse_sync.sql` against its own throwaway **local** database (never Supabase). It is called by `run_local_tests.sh`. The script itself is for the runbook rollback only (before `005`): paste `migrations/rollback/reverse_sync.sql` into the SQL editor; it prints how many legacy rows it changed.
