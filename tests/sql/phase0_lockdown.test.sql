@@ -41,9 +41,14 @@ begin
   update private.secrets set value = extensions.crypt('lockdown-pin', extensions.gen_salt('bf', 4)) where key = 'teacher_pin_hash';
   delete from private.auth_throttle;
   insert into public.courses(code, name) values ('LKA', 'Lockdown A');
-  insert into public.students(id, sn, name, days, bonus_units, active) values
-    ('lk1', 9101, 'Lock Visible',  array_fill(-1, array[10]), array_fill(0, array[10]), true),
-    ('lk2', 9102, 'Lock Inactive', array_fill(-1, array[10]), array_fill(0, array[10]), true);
+  -- works before 006 (legacy columns exist, sn is NOT NULL) and after it (students = id, name, name_ar)
+  if exists (select 1 from pg_attribute where attrelid = 'public.students'::regclass and attname = 'sn' and not attisdropped) then
+    insert into public.students(id, sn, name, days, bonus_units, active) values
+      ('lk1', 9101, 'Lock Visible',  array_fill(-1, array[10]), array_fill(0, array[10]), true),
+      ('lk2', 9102, 'Lock Inactive', array_fill(-1, array[10]), array_fill(0, array[10]), true);
+  else
+    insert into public.students(id, name) values ('lk1', 'Lock Visible'), ('lk2', 'Lock Inactive');
+  end if;
   insert into public.enrollments(student_id, course_id, sn, days, bonus_units, active)
   select v.sid, c.id, v.sn, array_fill(-1, array[10]), array_fill(0, array[10]), v.act
   from (values ('lk1', 1, true), ('lk2', 2, false)) v(sid, sn, act), public.courses c where c.code = 'LKA';
@@ -102,7 +107,8 @@ begin
   assert ok, 'anon cannot call private.require_teacher';
   ok := false; begin perform private.param('x', 1); exception when insufficient_privilege then ok := true; end;
   assert ok, 'anon cannot call private.param';
-  ok := false; begin perform private.sync_legacy_students(); exception when insufficient_privilege then ok := true; end;
+  -- before 006: permission denied; after 006 the function no longer exists (also "cannot call")
+  ok := false; begin perform private.sync_legacy_students(); exception when insufficient_privilege or undefined_function then ok := true; end;
   assert ok, 'anon cannot call private.sync_legacy_students';
 end $$;
 reset role;
