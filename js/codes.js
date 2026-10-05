@@ -6,7 +6,8 @@ import { reload } from './main.js';
 import { currentCourse, state } from './state.js';
 import { arHtml, confirmDialog, escapeHtml, setHint, showStatus } from './ui.js';
 
-let generatedSlips = []; // [{ sn, name, name_ar, code, course_name }]
+let generatedSlips = [];
+let sessionCodes = {}; // [{ sn, name, name_ar, code, course_name }]
 
 export function renderCodesManagement(containerId = 'codesArea') {
   const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
@@ -33,6 +34,10 @@ export function renderCodesManagement(containerId = 'codesArea') {
         <button class="save-btn sm" id="bulkGenCodesBtn" ${!course.exam_live ? 'disabled title="Publish an exam version first"' : ''}>
           <svg class="icon sm" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
           Bulk Generate Codes (${eligibleWithoutCode.length} eligible)
+        </button>
+        <button class="ghost-btn sm" id="printEligibilityListBtn">
+          <svg class="icon sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Print Eligibility List
         </button>
         ${generatedSlips.length > 0 ? `
           <button class="ghost-btn sm" id="printSlipsBtn">
@@ -135,6 +140,7 @@ function wireCodesEvents(container) {
       try {
         const res = await rpc('admin_generate_code', { p_enrollment_id: enrId });
         const student = (state.rows || []).find(r => r.id === enrId);
+        sessionCodes[enrId] = res.code;
         showSingleCodeModal(student, res.code);
         await reload();
       } catch (e) {
@@ -198,6 +204,7 @@ function wireCodesEvents(container) {
           if (!chunk || chunk.length === 0) break;
           totalGenerated += chunk.length;
           chunk.forEach(item => {
+            sessionCodes[item.enrollment_id] = item.code;
             allGenerated.push({
               sn: item.sn,
               name: item.name,
@@ -222,6 +229,13 @@ function wireCodesEvents(container) {
       } finally {
         bulkBtn.disabled = false;
       }
+    });
+  }
+
+  const printEligBtn = document.getElementById("printEligibilityListBtn");
+  if (printEligBtn) {
+    printEligBtn.addEventListener("click", () => {
+      openEligibilityModal();
     });
   }
 
@@ -329,4 +343,179 @@ function openCodeSlipsModal(slips) {
   document.getElementById('triggerPrintBtn').addEventListener('click', () => {
     window.print();
   });
+}
+
+
+// =============================================================================
+// PRINTABLE ELIGIBILITY LIST MODAL
+// =============================================================================
+export function openEligibilityModal() {
+  const course = currentCourse();
+  if (!course) return;
+
+  const allRows = (state.rows || []).slice().sort((a, b) => a.sn - b.sn);
+  let onlyEligible = false;
+  let includeCodes = false;
+
+  let modal = document.getElementById("eligibilityListModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "eligibilityListModal";
+    modal.className = "modal-overlay";
+    document.body.appendChild(modal);
+  }
+
+  function renderModalBody() {
+    const rows = onlyEligible ? allRows.filter(r => r.active && r.status === "eligible") : allRows;
+    const eligibleCount = allRows.filter(r => r.active && r.status === "eligible").length;
+    const notEligibleCount = allRows.filter(r => r.active && r.status === "not_eligible").length;
+    const activeTotal = allRows.filter(r => r.active).length;
+
+    const ruleLabel = course.eligibility_rule === "all_units"
+      ? `All ${course.day_count} ${(course.unit_label || "unit").toLowerCase()}s completed`
+      : (course.eligibility_rule === "teacher_approved" ? "Teacher Approval Required" : "Open to All Enrolled");
+
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width:980px; width:96%; max-height:92vh; overflow-y:auto; padding:24px;">
+        <!-- Screen Actions (Hidden on Print) -->
+        <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:10px; border-bottom:1.5px solid var(--border-color); padding-bottom:14px;">
+          <div>
+            <h3 style="margin:0; color:var(--emerald-dark); font-size:1.2rem;">Print Exam Eligibility List</h3>
+            <p style="margin:3px 0 0; font-size:0.8rem; color:var(--text-muted);">
+              Course: <b>${escapeHtml(course.name)}</b> &bull; Printable exam roster and invigilator check-in sheet
+            </p>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; color:var(--text-dark); cursor:pointer;">
+              <input type="checkbox" id="eligFilterCheck" ${onlyEligible ? "checked" : ""}>
+              Eligible Only (${eligibleCount})
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; color:var(--text-dark); cursor:pointer;">
+              <input type="checkbox" id="includeCodesCheck" ${includeCodes ? "checked" : ""}>
+              Include Exam Codes
+            </label>
+            <button class="save-btn sm" id="triggerPrintEligBtn">
+              <svg class="icon sm" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Print List
+            </button>
+            <button class="ghost-btn sm" id="closeEligModalBtn">Close</button>
+          </div>
+        </div>
+
+        <!-- Printable Document Area -->
+        <div class="eligibility-print-doc" id="eligibilityPrintArea">
+          <!-- Institutional Header -->
+          <div style="text-align:center; margin-bottom:16px; border-bottom:2px double var(--gold-ochre); padding-bottom:12px;">
+            <div style="font-family:'Amiri',serif; font-size:1.35rem; color:var(--emerald-dark); margin-bottom:4px;">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
+            <div style="font-size:1.15rem; font-weight:800; color:var(--emerald-dark); text-transform:uppercase; letter-spacing:1px;">
+              Ma'had Miftah al-'Ilm &bull; معهد مفتاح العلم
+            </div>
+            <div style="font-size:1.35rem; font-weight:700; color:var(--emerald-dark); margin:6px 0 2px; font-family:'Amiri',serif;">
+              كشف أهلية وحضور اختبار المقرر
+            </div>
+            <div style="font-size:0.95rem; font-weight:700; color:var(--gold-ochre); text-transform:uppercase; letter-spacing:0.5px;">
+              Exam Eligibility & Hall Check-in Roster
+            </div>
+          </div>
+
+          <!-- Course & Roster Metadata Bar -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; font-size:0.85rem; background:var(--bg-warm); border:1px solid var(--border-color); border-radius:6px; padding:10px 14px; flex-wrap:wrap; gap:10px;">
+            <div>
+              <div>Course: <b>${escapeHtml(course.name)}</b> ${course.name_ar ? `(${escapeHtml(course.name_ar)})` : ""}</div>
+              <div>Course Code: <b>${escapeHtml(course.code)}</b> &bull; Eligibility Rule: <b>${escapeHtml(ruleLabel)}</b></div>
+            </div>
+            <div style="text-align:right;">
+              <div>Date Generated: <b>${new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</b></div>
+              <div>Status: <b>${activeTotal} Active Enrolled &bull; ${eligibleCount} Eligible &bull; ${notEligibleCount} Awaiting</b></div>
+            </div>
+          </div>
+
+          <!-- Roster Table -->
+          <table class="eligibility-table" style="width:100%; border-collapse:collapse; margin-top:8px;">
+            <thead>
+              <tr style="background:var(--emerald-dark); color:white; font-size:0.8rem; text-align:left;">
+                <th style="padding:8px 6px; border:1px solid var(--border-color); width:40px; text-align:center;">S/N</th>
+                <th style="padding:8px; border:1px solid var(--border-color);">Student Name (English)</th>
+                <th style="padding:8px; border:1px solid var(--border-color); text-align:right;">الاسم بالعربية</th>
+                <th style="padding:8px; border:1px solid var(--border-color); text-align:center; width:90px;">Progress</th>
+                <th style="padding:8px; border:1px solid var(--border-color); text-align:center; width:70px;">Score</th>
+                <th style="padding:8px; border:1px solid var(--border-color); text-align:center; width:110px;">Eligibility</th>
+                ${includeCodes ? `<th style="padding:8px; border:1px solid var(--border-color); text-align:center; width:110px;">Exam Code</th>` : ""}
+                <th style="padding:8px; border:1px solid var(--border-color); text-align:center; width:120px;">Candidate Signature</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.length === 0 ? `
+                <tr><td colspan="${includeCodes ? 8 : 7}" style="padding:20px; text-align:center; color:var(--text-muted);">No students matching selection.</td></tr>
+              ` : rows.map(r => {
+                const marked = (r.days || []).filter(d => typeof d === "number" && d >= 0).length;
+                const totalPts = typeof r.total === "number" ? r.total : (r.score !== undefined ? r.score : "--");
+                const isElig = r.status === "eligible";
+                const isFinal = r.status === "finalized";
+                const code = sessionCodes[r.id];
+                return `
+                  <tr style="font-size:0.85rem; border-bottom:1px solid var(--border-color);">
+                    <td style="padding:6px; border:1px solid var(--border-color); text-align:center; font-weight:700;">#${r.sn}</td>
+                    <td style="padding:6px 8px; border:1px solid var(--border-color); font-weight:600; color:var(--text-dark);">${escapeHtml(r.name)}</td>
+                    <td style="padding:6px 8px; border:1px solid var(--border-color); text-align:right; font-family:'Amiri',serif; font-size:0.95rem;">${escapeHtml(r.nameAr || "--")}</td>
+                    <td style="padding:6px; border:1px solid var(--border-color); text-align:center; font-size:0.8rem;">${marked}/${course.day_count} ${(course.unit_label || "unit").toLowerCase()}s</td>
+                    <td style="padding:6px; border:1px solid var(--border-color); text-align:center; font-weight:600;">${totalPts}</td>
+                    <td style="padding:6px; border:1px solid var(--border-color); text-align:center;">
+                      ${isElig ? `<span style="color:var(--emerald-light); font-weight:700;">Eligible ✓</span>` : (isFinal ? `<span style="color:var(--emerald-dark); font-weight:700;">Completed</span>` : `<span style="color:var(--text-muted); font-size:0.75rem;">Awaiting</span>`)}
+                    </td>
+                    ${includeCodes ? `
+                      <td style="padding:6px; border:1px solid var(--border-color); text-align:center; font-family:monospace; font-weight:800;">
+                        ${code ? `<span style="letter-spacing:1px; color:var(--emerald-dark);">${escapeHtml(code)}</span>` : (isElig ? `<span style="color:var(--text-muted); font-size:0.75rem;">[Pending Code]</span>` : `<span style="color:var(--text-muted); font-size:0.75rem;">--</span>`)}
+                      </td>
+                    ` : ""}
+                    <td style="padding:6px; border:1px solid var(--border-color); text-align:center;">
+                      <div style="border-bottom:1px dotted #888; height:22px; width:90%; margin:0 auto;"></div>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+
+          <!-- Invigilator Verification Sign-off -->
+          <div style="display:flex; justify-content:space-between; margin-top:36px; padding-top:14px; font-size:0.82rem; color:var(--text-dark);">
+            <div style="width:260px;">
+              <div style="border-bottom:1.5px solid #555; height:30px; margin-bottom:6px;"></div>
+              <div>Invigilator / Examiner Name & Signature</div>
+            </div>
+            <div style="width:200px; text-align:right;">
+              <div style="border-bottom:1.5px solid #555; height:30px; margin-bottom:6px;"></div>
+              <div>Official Stamp / Date</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.style.display = "flex";
+
+    // Wire controls
+    document.getElementById("closeEligModalBtn").addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+    document.getElementById("triggerPrintEligBtn").addEventListener("click", () => {
+      window.print();
+    });
+    const filterChk = document.getElementById("eligFilterCheck");
+    if (filterChk) {
+      filterChk.addEventListener("change", (e) => {
+        onlyEligible = e.target.checked;
+        renderModalBody();
+      });
+    }
+    const codesChk = document.getElementById("includeCodesCheck");
+    if (codesChk) {
+      codesChk.addEventListener("change", (e) => {
+        includeCodes = e.target.checked;
+        renderModalBody();
+      });
+    }
+  }
+
+  renderModalBody();
 }

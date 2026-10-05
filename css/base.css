@@ -324,3 +324,75 @@
 .exam-fieldset { border: none; padding: 0; margin: 0; }
 .exam-fill { width: 100%; max-width: 360px; padding: 8px 10px; border: 1.5px solid var(--border-color); border-radius: 6px; font: inherit; }
 .exam-essay { width: 100%; padding: 10px; border: 1.5px solid var(--border-color); border-radius: 6px; font: inherit; }
+
+/* ---- Print Styles for Eligibility Lists and Code Slips ---- */
+@media print {
+  @page {
+    margin: 1.2cm;
+    size: auto;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* Hide all interactive site navigation, header, tabs, buttons, hints, overlays */
+  #header, #navTabs, #courseSwitchWrap, #statusArea, .teacher-panel, .tab-btn, .no-print, button, .close-btn,
+  .modal-overlay:not(#eligibilityListModal):not(#codeSlipsModal) {
+    display: none !important;
+  }
+  /* The active print modal fills the page naturally without fixed/flex overlay */
+  .modal-overlay#eligibilityListModal,
+  .modal-overlay#codeSlipsModal {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+  .modal-overlay#eligibilityListModal .modal-content,
+  .modal-overlay#codeSlipsModal .modal-content {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+  .eligibility-print-doc {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .eligibility-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 10px !important;
+  }
+  .eligibility-table th,
+  .eligibility-table td {
+    border: 1px solid #444 !important;
+    padding: 6px 8px !important;
+    font-size: 9.5pt !important;
+    color: #000 !important;
+  }
+  .eligibility-table th {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+  }
+  .eligibility-table tr {
+    page-break-inside: avoid !important;
+  }
+  .code-slip-card {
+    page-break-inside: avoid !important;
+    border: 1.5px dashed #444 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

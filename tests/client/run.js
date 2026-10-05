@@ -196,6 +196,17 @@ const writes = (db) => db.log.filter(l => l.method !== 'GET' && !l.path.startsWi
   click(w, q(w, "#closeSlipsBtn"));
   ok(q(w, "#codeSlipsModal").style.display === "none", "slips modal closed");
 
+  click(w, q(w, "#printEligibilityListBtn"));
+  ok(await until(() => q(w, "#eligibilityListModal") && q(w, "#eligibilityListModal").style.display === "flex"), "eligibility list modal opened");
+  ok(qa(w, ".eligibility-table tbody tr").length > 0, "eligibility table rendered rows");
+  ok(!qa(w, ".eligibility-table th").some(th => th.textContent.includes("Exam Code")), "exam code column hidden by default");
+  const codesChk = q(w, "#includeCodesCheck");
+  codesChk.checked = true;
+  codesChk.dispatchEvent(new w.Event("change", { bubbles: true }));
+  ok(await until(() => qa(w, ".eligibility-table th").some(th => th.textContent.includes("Exam Code"))), "exam code column displayed when toggled on");
+  click(w, q(w, "#closeEligModalBtn"));
+  ok(q(w, "#eligibilityListModal").style.display === "none", "eligibility modal closed");
+
   console.log('== student exam taking portal');
   click(w, q(w, '.tab-btn[data-tab="exam"]'));
   ok(await until(() => q(w, "#examCodeInput") && q(w, "#examCheckBtn")), "exam tab loaded with code entry input");
