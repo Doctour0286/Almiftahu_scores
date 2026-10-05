@@ -80,11 +80,13 @@ function expectDenied(name, r) {
 }
 
 // ---------- 1. private schema and private functions ----------
-for (const t of ['secrets', 'teacher_sessions', 'auth_throttle', 'system_params', 'institution_settings']) {
+for (const t of ['secrets', 'teacher_sessions', 'auth_throttle', 'system_params', 'institution_settings',
+  'exams', 'exam_versions', 'sections', 'questions', 'question_keys', 'v_question_values']) {   // the last six: Phase 1 (AC-1.1); "not in schema cache" counts as denied too
   expectDenied(`1. read private.${t}`, await call('GET', `/${t}?select=*&limit=1`, { headers: { 'Accept-Profile': 'private' } }));
 }
 for (const [fn, args] of [['fail', { p_code: 'E_X' }], ['require_teacher', { p_token: 'x' }], ['param', { p_key: 'x', p_default: 1 }],
-  ['recompute_result', { p_enrollment: ZERO }], ['sync_legacy_students', {}], ['next_sn', { p_course: ZERO }]]) {
+  ['recompute_result', { p_enrollment: ZERO }], ['sync_legacy_students', {}], ['next_sn', { p_course: ZERO }],
+  ['exam_doc', { p_version: ZERO }], ['validate_exam_version', { p_version: ZERO }], ['clone_version', { p_src: ZERO, p_dst: ZERO }]]) {
   expectDenied(`1. call private.${fn}()`, await call('POST', `/rpc/${fn}`, { body: args, headers: { 'Content-Profile': 'private' } }));
 }
 // the same names without a schema header resolve in `public` and must not exist there for anon
@@ -150,6 +152,23 @@ const adminCalls = {
   admin_save_day:           { p_enrollment_id: ZERO, p_day_index: 0, p_score: 0, p_bonus: 0 },
   admin_set_exam_approval:  { p_enrollment_id: ZERO, p_approved: false },
 };
+// Phase 1 (011): the exam builder RPCs. Present only after 011, detected by a harmless call with a garbage token
+// (every admin RPC checks the token first, so this cannot read or change anything). PROBE_PHASE1=1 forces them on.
+const PHASE1_CALLS = {
+  admin_get_exam:        { p_course_id: ZERO },
+  admin_get_version:     { p_version_id: ZERO },
+  admin_create_draft:    { p_course_id: ZERO },
+  admin_save_draft:      { p_version_id: ZERO, p_rev: 0, p_doc: {} },
+  admin_discard_draft:   { p_version_id: ZERO },
+  admin_publish_version: { p_version_id: ZERO },
+  admin_patch_text:      { p_question_id: ZERO, p_prompt: 'probe', p_options: null },
+};
+{
+  const r = await call('POST', '/rpc/admin_get_exam', { body: { p_token: 'probe-garbage', p_course_id: ZERO } });
+  const present = r.status === 400 && r.json && r.json.message === 'E_AUTH';
+  if (present || process.env.PROBE_PHASE1 === '1') Object.assign(adminCalls, PHASE1_CALLS);
+  record('PASS', `4. Phase 1 exam builder RPCs ${present ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE1=1 to probe them anyway)'}`);
+}
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_token: tok, ...args } });
@@ -201,8 +220,8 @@ record('SKIP', '6. exam_* wrong-code probes', 'Phase 2 (no exam RPCs exist yet)'
     const missingRpc = [...expectedRpc].filter((f) => !paths.includes('/rpc/' + f));
     if (extraTables.length === 0 && extraRpc.length === 0) record('PASS', '7. exposed tables and RPCs are exactly the expected set');
     else record('FAIL', '7. exposed tables and RPCs are exactly the expected set', `unexpected: ${[...extraTables, ...extraRpc].join(', ')}`);
-    if (missingRpc.length) record('FAIL', '7. all 16 RPCs are reachable by anon', `missing: ${missingRpc.join(', ')}`);
-    else record('PASS', '7. all 16 RPCs are reachable by anon');
+    if (missingRpc.length) record('FAIL', `7. all ${expectedRpc.size} RPCs are reachable by anon`, `missing: ${missingRpc.join(', ')}`);
+    else record('PASS', `7. all ${expectedRpc.size} RPCs are reachable by anon`);
   } else {
     record('SKIP', '7. OpenAPI surface listing', `not available to the public key (${r.status}); steps 1-5 already cover it`);
   }

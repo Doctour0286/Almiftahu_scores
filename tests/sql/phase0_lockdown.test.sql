@@ -31,7 +31,9 @@ begin
   assert not exists (select 1 from public.app_settings where key = 'teacher_pin'), 'AC-0.3: plaintext PIN row deleted';
   assert exists (select 1 from private.secrets where key = 'teacher_pin_hash'), 'the hash is kept';
   assert (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
-          where p.prokind = 'f' and has_function_privilege('anon', p.oid, 'EXECUTE')) = 16, 'anon executes exactly 16 public functions';
+          where p.prokind = 'f' and has_function_privilege('anon', p.oid, 'EXECUTE'))
+         = 16 + case when to_regprocedure('public.admin_get_exam(text,uuid)') is not null then 7 else 0 end,
+         'anon executes exactly the 16 Phase-0 RPCs (+7 exam builder RPCs once 011 is applied)';
   assert not has_schema_privilege('anon', 'private', 'USAGE'), 'no anon usage on private';
 end $$;
 
