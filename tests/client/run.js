@@ -153,6 +153,71 @@ const writes = (db) => db.log.filter(l => l.method !== 'GET' && !l.path.startsWi
   click(w, q(w, `[data-delete="${pat.id}"]`)); await until(() => q(w, '#confirmOverlay').style.display === 'flex'); click(w, q(w, '#confirmOk'));
   ok(await until(() => /certificate and can't be deleted/.test(text(w, '#statusArea') || '')), 'delete blocked with certificate message: ' + text(w, '#statusArea'));
 
+  console.log('== exam builder (versions, draft, preview, publish)');
+  click(w, q(w, '#menuToggleExam')); 
+  ok(await until(() => q(w, '#examNewDraft') || q(w, '#examContinue')), 'exam builder section loaded');
+  const draftBtn = q(w, '#examNewDraft') || q(w, '#examContinue');
+  click(w, draftBtn);
+  ok(await until(() => q(w, '#exTitle') && q(w, '#examAddSection')), 'draft editor opened');
+  type(w, q(w, '#exTitle'), 'Midterm Exam');
+  type(w, q(w, '#exDur'), '60');
+  click(w, q(w, '#examAddSection'));
+  ok(await until(() => qa(w, '.exam-section').length === 1), 'section added');
+  type(w, q(w, '[data-f="s.weight"]'), '100');
+  type(w, q(w, '[data-f="s.title"]'), 'Basics');
+  click(w, q(w, '[data-act="q-add"]'));
+  ok(await until(() => qa(w, '.exam-q').length === 1), 'question added');
+  type(w, q(w, '[data-f="q.prompt"]'), 'What is the first pillar of Islam?');
+  type(w, qa(w, 'input[data-f="q.opt"]')[0], 'Shahada');
+  type(w, qa(w, 'input[data-f="q.opt"]')[1], 'Salah');
+  const chk = qa(w, 'input[data-f="q.correct"]')[0]; chk.checked = true; chk.dispatchEvent(new w.Event('input', { bubbles: true }));
+  click(w, q(w, '#examPreviewBtn'));
+  ok(await until(() => q(w, '#previewBanner')), 'preview view opened');
+  click(w, q(w, '#pvClose'));
+  ok(await until(() => q(w, '#examPublishBtn')), 'preview closed back to draft editor');
+  click(w, q(w, '#examPublishBtn'));
+  ok(await until(() => q(w, '#pubGo')), 'publish dialog opened');
+  click(w, q(w, '#pubGo'));
+  ok(await until(() => qa(w, '.exam-version[data-status="live"]').length === 1), 'exam published as Live version');
+  ok(adab.exam_live === true, 'course has exam_live = true');
+
+  console.log('== exam codes & slips');
+  adab.eligibility_rule = 'open';
+  q(w, '#courseSwitch').dispatchEvent(new w.Event('change')); await sleep(50);
+  click(w, q(w, "#menuToggleCodes"));
+  ok(await until(() => q(w, "#bulkGenCodesBtn")), "codes section opened and has bulk generate button");
+  click(w, q(w, "#bulkGenCodesBtn"));
+  ok(await until(() => q(w, "#codeSlipsModal") && q(w, "#codeSlipsModal").style.display === "flex"), "slips modal opened automatically after bulk generation");
+  const slipCards = qa(w, ".code-slip-card");
+  ok(slipCards.length > 0, "code slips rendered");
+  const firstEnrWithCode = db.enrollments.find(e => e.course_id === adab.id && e.active && db.codes.some(c => c.enrollment_id === e.id && c.status === "active"));
+  const activeStudentCode = db.codes.find(c => c.enrollment_id === firstEnrWithCode.id && c.status === "active").code;
+  ok(activeStudentCode && activeStudentCode.length >= 8, "generated code found in db: " + activeStudentCode);
+  click(w, q(w, "#closeSlipsBtn"));
+  ok(q(w, "#codeSlipsModal").style.display === "none", "slips modal closed");
+
+  console.log('== student exam taking portal');
+  click(w, q(w, '.tab-btn[data-tab="exam"]'));
+  ok(await until(() => q(w, "#examCodeInput") && q(w, "#examCheckBtn")), "exam tab loaded with code entry input");
+  q(w, "#examStudentSelect").value = firstEnrWithCode.id;
+  q(w, "#examCodeInput").value = activeStudentCode;
+  click(w, q(w, "#examCheckBtn"));
+  ok(await until(() => q(w, "#startExamBtn")), "code verified and start exam button displayed");
+  click(w, q(w, "#startExamBtn"));
+  ok(await until(() => q(w, ".student-exam-wrap")), "exam player loaded");
+  const opt = q(w, 'input[name^="opt_"]');
+  if (opt) {
+    click(w, opt);
+    ok(await until(() => q(w, "#studentAutosaveIndicator")), "question answered and save indicator present");
+  }
+  click(w, q(w, "#submitExamTopBtn"));
+  ok(await until(() => q(w, "#confirmSubmitBtn")), "submit confirmation modal opened");
+  click(w, q(w, "#confirmSubmitBtn"));
+  ok(await until(() => q(w, "#finishExamBtn")), "exam submitted successfully and score/finish screen reached");
+  click(w, q(w, "#finishExamBtn"));
+  ok(await until(() => q(w, "#examCodeInput")), "returned to exam entry screen");
+  click(w, q(w, '.tab-btn[data-tab="manage"]'));
+
   console.log('== session expiry, logout, reload');
   db.tokens.clear();
   const target = qa(w, '#manageEntryList .entry-row')[0]; click(w, target.querySelector('[data-toggle-active]') || target.querySelector('.entry-row-head'));

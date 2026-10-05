@@ -42,3 +42,4 @@ export const LEGACY_TEACHER_FLAG_KEY = 'mahad_teacher_unlocked';   // removed on
 
 export const REALTIME_DEBOUNCE_MS = 500;
 export const PAGE_SIZE = 1000;   // PostgREST default max rows per request
+export const EXAM_AUTOSAVE_MS = 1500;

@@ -5,6 +5,7 @@ import { clearLegacyFlag, onTeacherExpired, restoreSession, updateTeacherTabVisi
 import { chooseCourse, refresh } from './data.js';
 import { renderCourseSwitcher, renderDirectory, renderLeaderboard, renderTable } from './portal.js';
 import { refreshManageLists, renderManageTab } from './roster.js';
+import { renderStudentExamPortal } from './examTaking.js';
 import { state } from './state.js';
 import { clearStatus, showStatus } from './ui.js';
 
@@ -28,6 +29,9 @@ export function renderAll() {
     if (!state.teacherUnlocked) { if (!document.getElementById('pinInput')) renderManageTab(); }
     else if (document.getElementById('manageEntryList')) refreshManageLists();
     else renderManageTab();
+  }
+  if (active && active.id === 'tab-exam') {
+    renderStudentExamPortal();
   }
 }
 
@@ -54,6 +58,7 @@ export function switchTab(name) {
   const navBtn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
   if (navBtn) navBtn.classList.add('active');
   if (name === 'manage') renderManageTab();
+  if (name === 'exam') renderStudentExamPortal();
 }
 
 document.querySelectorAll('#navTabs .tab-btn').forEach(btn => {

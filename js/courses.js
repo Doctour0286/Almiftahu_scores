@@ -74,7 +74,7 @@ function paint(host, v, creating) {
     </div>
     ${creating ? `<div class="field-row"><label for="cfCopy">Start from</label>
       <select id="cfCopy" class="panel-select"><option value="">Blank (defaults)</option>
-      ${state.courses.map(c => `<option value="${escapeAttr(c.id)}"${state.courseDraft.copyFrom === c.id ? ' selected' : ''}>Copy from ${escapeHtml(c.name)}</option>`).join('')}</select></div>` : ''}
+      ${state.courses.map(c => `<option value="${escapeAttr(c.id)}"${state.courseDraft.copyFrom === c.id ? ' selected' : ''}>Copy from ${escapeHtml(c.name)}</option>`).join('')}</select></div>` + (state.courseDraft.copyFrom ? `<div class="field-row"><label for="cfCopyExam">Exam</label><label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="cfCopyExam" checked> Also copy the exam as a draft</label></div>` : '') : ''}
     ${txt('cfCode', creating ? 'Code (A-Z, 0-9, -)' : 'Code (fixed)', v.code, creating ? 'maxlength="12" autocapitalize="characters"' : 'readonly')}
     ${txt('cfName', 'Name', v.name)}
     ${txt('cfNameAr', 'Name (Arabic)', v.name_ar, 'dir="auto"')}
@@ -189,11 +189,12 @@ async function saveCourse() {
   };
   if (creating) payload.code = v.code; else { payload.id = course.id; payload.code = course.code; }
   const copyFrom = creating && state.courseDraft.copyFrom ? state.courseDraft.copyFrom : null;
+  const copyExam = creating && copyFrom ? !!(document.getElementById('cfCopyExam') && document.getElementById('cfCopyExam').checked) : false;
 
   const btn = document.getElementById('courseSaveBtn');
   btn.disabled = true; setHint('courseHint', 'Saving...', '');
   try {
-    const call = (confirm) => rpc('admin_save_course', { p_course: payload, p_confirm: confirm, p_copy_from: copyFrom });
+    const call = (confirm) => rpc('admin_save_course', { p_course: payload, p_confirm: confirm, p_copy_from: copyFrom, p_copy_exam: copyExam });
     let res;
     try { res = await call(false); }
     catch (e) {

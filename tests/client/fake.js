@@ -3,7 +3,7 @@ const uid = (() => { let n = 0; return (p) => `${p}-0000-0000-0000-${String(++n)
 class Fail extends Error { constructor(code, detail) { super(code); this.code = code; this.detail = detail || ''; } }
 
 function makeBackend() {
-  const db = { courses: [], students: [], enrollments: [], tokens: new Set(), pin: '1234', fails: 0, lockedUntil: 0, log: [], badLogin: 0 };
+  const db = { courses: [], students: [], enrollments: [], exams: [], codes: [], attempts: [], tokens: new Set(), pin: '1234', fails: 0, lockedUntil: 0, log: [], badLogin: 0 };
   const mkCourse = (o) => ({ id: uid('c'), status: 'active', created_at: new Date(1e12 + db.courses.length * 1000).toISOString(),
     name_ar: null, unit_label: 'Day', unit_label_ar: null, lesson_mode: 'scored', eligibility_rule: 'all_units', day_count: 10, day_max: 10,
     bonus_unit_value: 2, lesson_max: 100, weight_lessons: 50, weight_exam: 50, pass_mark: 60, reveal_answers: true, exam_live: false,
@@ -86,6 +86,248 @@ function makeBackend() {
       if (changed && n > 0 && !p_confirm) throw new Fail('E_CONFIRM_REQUIRED', String(n));
       Object.assign(old, next); db.enrollments.filter(e => e.course_id === old.id).forEach(e => { e.days = Array.from({ length: old.day_count }, (_, i) => e.days[i] ?? -1); e.bonus_units = Array.from({ length: old.day_count }, (_, i) => e.bonus_units[i] ?? 0); });
       return { course: old, affected: n }; },
+    admin_get_exam: ({ p_token, p_course_id }) => {
+      auth(p_token); courseOf(p_course_id);
+      let exam = db.exams.find(x => x.course_id === p_course_id);
+      if (!exam) { exam = { id: uid('x'), course_id: p_course_id, versions: [] }; db.exams.push(exam); }
+      const draft = exam.versions.find(v => v.status === 'draft') || null;
+      const versions = exam.versions.map(v => ({
+        id: v.id, no: v.version_no, status: v.status, title: v.title, title_ar: v.title_ar,
+        duration_minutes: v.duration_minutes, published_at: v.published_at,
+        question_count: (v.sections || []).reduce((sum, s) => sum + (s.questions || []).length, 0),
+        attempts_count: 0,
+      })).reverse();
+      return { versions, draft };
+    },
+    admin_get_version: ({ p_token, p_version_id }) => {
+      auth(p_token);
+      for (const ex of db.exams) {
+        const v = ex.versions.find(x => x.id === p_version_id);
+        if (v) return JSON.parse(JSON.stringify(v));
+      }
+      throw new Fail('E_NOT_FOUND', 'That version no longer exists.');
+    },
+    admin_create_draft: ({ p_token, p_course_id }) => {
+      auth(p_token); courseOf(p_course_id);
+      let exam = db.exams.find(x => x.course_id === p_course_id);
+      if (!exam) { exam = { id: uid('x'), course_id: p_course_id, versions: [] }; db.exams.push(exam); }
+      if (exam.versions.some(v => v.status === 'draft')) throw new Fail('E_VALIDATION', 'A draft already exists for this course.');
+      const live = exam.versions.find(v => v.status === 'live');
+      const vno = exam.versions.length + 1;
+      let draftDoc;
+      if (live) {
+        draftDoc = JSON.parse(JSON.stringify(live));
+        draftDoc.id = uid('v'); draftDoc.status = 'draft'; draftDoc.version_no = vno; draftDoc.draft_rev = 0; draftDoc.published_at = null;
+        (draftDoc.sections || []).forEach(s => { s.id = uid('sec'); (s.questions || []).forEach(q => { q.id = uid('q'); }); });
+      } else {
+        draftDoc = { id: uid('v'), version_no: vno, status: 'draft', title: '', title_ar: null, instructions: null, instructions_ar: null, duration_minutes: 60, draft_rev: 0, sections: [] };
+      }
+      exam.versions.push(draftDoc);
+      return JSON.parse(JSON.stringify(draftDoc));
+    },
+    admin_save_draft: ({ p_token, p_version_id, p_rev, p_doc }) => {
+      auth(p_token);
+      for (const ex of db.exams) {
+        const v = ex.versions.find(x => x.id === p_version_id);
+        if (v) {
+          if (v.status !== 'draft') throw new Fail('E_VALIDATION', 'Only drafts can be saved.');
+          if (v.draft_rev !== p_rev) throw new Fail('E_CONFLICT', String(v.draft_rev));
+          v.title = p_doc.title || ''; v.title_ar = p_doc.title_ar || null;
+          v.instructions = p_doc.instructions || null; v.instructions_ar = p_doc.instructions_ar || null;
+          v.duration_minutes = p_doc.duration_minutes || 60;
+          v.sections = JSON.parse(JSON.stringify(p_doc.sections || []));
+          v.draft_rev = (v.draft_rev || 0) + 1;
+          return v.draft_rev;
+        }
+      }
+      throw new Fail('E_NOT_FOUND', 'That version no longer exists.');
+    },
+    admin_discard_draft: ({ p_token, p_version_id }) => {
+      auth(p_token);
+      for (const ex of db.exams) {
+        const idx = ex.versions.findIndex(x => x.id === p_version_id && x.status === 'draft');
+        if (idx >= 0) { ex.versions.splice(idx, 1); return null; }
+      }
+      throw new Fail('E_NOT_FOUND', 'That draft no longer exists.');
+    },
+    admin_publish_version: ({ p_token, p_version_id }) => {
+      auth(p_token);
+      for (const ex of db.exams) {
+        const v = ex.versions.find(x => x.id === p_version_id && x.status === 'draft');
+        if (v) {
+          const probs = [];
+          if (!v.title || !v.title.trim()) probs.push({ path: 'title', message: 'Exam title cannot be empty.' });
+          if (!v.duration_minutes || v.duration_minutes < 1 || v.duration_minutes > 600) probs.push({ path: 'duration_minutes', message: 'Duration must be between 1 and 600 minutes.' });
+          if (!v.sections || v.sections.length === 0) probs.push({ path: 'sections', message: 'At least one section is required.' });
+          const totalW = (v.sections || []).reduce((sum, s) => sum + (Number(s.weight) || 0), 0);
+          if (Math.abs(totalW - 100) > 0.001) probs.push({ path: 'weights', message: 'Section weights must sum to 100.' });
+          (v.sections || []).forEach((s, sIdx) => {
+            if (!s.questions || s.questions.length === 0) probs.push({ path: `sections[${sIdx}]`, message: 'Every section must have at least one question.' });
+            if (!s.weight || s.weight <= 0) probs.push({ path: `sections[${sIdx}].weight`, message: 'Section weight must be greater than 0.' });
+            (s.questions || []).forEach((q, qIdx) => {
+              if (!q.prompt || !q.prompt.trim()) probs.push({ path: `sections[${sIdx}].questions[${qIdx}].prompt`, message: 'Question prompt cannot be empty.' });
+              if (s.format === 'mcq') {
+                if (!q.options || q.options.length < 2 || q.options.length > 8) probs.push({ path: `sections[${sIdx}].questions[${qIdx}].options`, message: 'MCQ must have 2 to 8 options.' });
+                if (!q.key || !q.key.correct_option_ids || q.key.correct_option_ids.length === 0) probs.push({ path: `sections[${sIdx}].questions[${qIdx}].key`, message: 'At least one correct option must be selected.' });
+              }
+              if (s.format === 'tf') {
+                if (!q.key || !q.key.correct_option_ids || q.key.correct_option_ids.length !== 1) probs.push({ path: `sections[${sIdx}].questions[${qIdx}].key`, message: 'Exactly one correct option required.' });
+              }
+              if (s.format === 'fill') {
+                if (!q.key || !q.key.accepted_answers || q.key.accepted_answers.length === 0 || !q.key.accepted_answers.some(a => a.trim())) probs.push({ path: `sections[${sIdx}].questions[${qIdx}].key`, message: 'At least one accepted answer required.' });
+              }
+            });
+          });
+          if (probs.length > 0) throw new Fail('E_VALIDATION', JSON.stringify(probs));
+          const prevLive = ex.versions.find(x => x.status === 'live');
+          if (prevLive) prevLive.status = 'retired';
+          v.status = 'live'; v.published_at = new Date().toISOString();
+          const course = db.courses.find(c => c.id === ex.course_id);
+          if (course) course.exam_live = true;
+          return { id: v.id, version_no: v.version_no, status: 'live', published_at: v.published_at };
+        }
+      }
+      throw new Fail('E_NOT_FOUND', 'That version no longer exists.');
+    },
+    admin_patch_text: ({ p_token, p_question_id, p_prompt, p_options }) => {
+      auth(p_token);
+      for (const ex of db.exams) {
+        for (const v of ex.versions) {
+          for (const s of (v.sections || [])) {
+            const q = (s.questions || []).find(x => x.id === p_question_id);
+            if (q) {
+              if (v.status === 'draft') throw new Fail('E_VALIDATION', 'Drafts are edited with the draft editor.');
+              if (!p_prompt || !p_prompt.trim()) throw new Fail('E_VALIDATION', 'Prompt cannot be empty.');
+              q.prompt = p_prompt;
+              if (p_options) q.options = p_options;
+              return { ok: true };
+            }
+          }
+        }
+      }
+      throw new Fail('E_NOT_FOUND', 'That question no longer exists.');
+    },
+    admin_generate_code: ({ p_token, p_enrollment_id }) => {
+      auth(p_token);
+      const enr = db.enrollments.find(e => e.id === p_enrollment_id);
+      if (!enr) throw new Fail('E_NOT_FOUND');
+      const c = courseOf(enr.course_id);
+      if (!c.exam_live) throw new Fail('E_VALIDATION', 'No live exam.');
+      const codeStr = 'EXAM-' + Math.floor(1000 + Math.random() * 9000);
+      db.codes = db.codes.filter(x => !(x.enrollment_id === p_enrollment_id && x.status === 'active'));
+      db.codes.push({ id: uid('code'), enrollment_id: p_enrollment_id, code: codeStr, status: 'active' });
+      return { code: codeStr };
+    },
+    admin_generate_codes_bulk: ({ p_token, p_course_id }) => {
+      auth(p_token);
+      const c = courseOf(p_course_id);
+      if (!c.exam_live) throw new Fail('E_VALIDATION', 'No live exam.');
+      const out = [];
+      const eligible = db.enrollments.filter(e => e.course_id === p_course_id && e.active && !db.codes.some(x => x.enrollment_id === e.id && x.status === 'active')).slice(0, 40);
+      eligible.forEach(e => {
+        const s = db.students.find(x => x.id === e.student_id);
+        const codeStr = 'EXAM-' + Math.floor(1000 + Math.random() * 9000);
+        db.codes.push({ id: uid('code'), enrollment_id: e.id, code: codeStr, status: 'active' });
+        out.push({ enrollment_id: e.id, sn: e.sn, name: s.name, name_ar: s.name_ar, code: codeStr });
+      });
+      return out;
+    },
+    admin_revoke_code: ({ p_token, p_enrollment_id }) => {
+      auth(p_token);
+      const ec = db.codes.find(x => x.enrollment_id === p_enrollment_id && x.status === 'active');
+      if (ec) ec.status = 'revoked';
+      return null;
+    },
+    admin_clear_lock: ({ p_token }) => {
+      auth(p_token);
+      return null;
+    },
+    admin_reset_attempt: ({ p_token, p_enrollment_id }) => {
+      auth(p_token);
+      const att = db.attempts.find(a => a.enrollment_id === p_enrollment_id && !a.superseded);
+      if (att) att.superseded = true;
+      return null;
+    },
+    exam_check: ({ p_enrollment_id, p_code }) => {
+      const enr = db.enrollments.find(e => e.id === p_enrollment_id);
+      if (!enr || !enr.active) throw new Fail('E_AUTH');
+      const c = db.courses.find(x => x.id === enr.course_id);
+      if (!c || !c.exam_live) throw new Fail('E_NO_LIVE_EXAM');
+      const activeCode = db.codes.find(x => x.enrollment_id === p_enrollment_id && x.status === 'active');
+      const cleanInput = (p_code || '').toUpperCase().replace(/[\\s-]+/g, '');
+      const cleanStored = (activeCode ? activeCode.code : '').toUpperCase().replace(/[\\s-]+/g, '');
+      if (!activeCode || cleanInput !== cleanStored) throw new Fail('E_AUTH');
+      const att = db.attempts.find(a => a.enrollment_id === p_enrollment_id && !a.superseded);
+      const exam = db.exams.find(x => x.course_id === c.id);
+      const liveVer = exam ? exam.versions.find(v => v.status === 'live') : null;
+      return {
+        ok: true,
+        state: att ? att.status : 'not_started',
+        remaining_seconds: 3600,
+        exam: {
+          title: liveVer ? liveVer.title : c.name,
+          title_ar: liveVer ? liveVer.title_ar : null,
+          duration_minutes: liveVer ? liveVer.duration_minutes : 60,
+          instructions: liveVer ? liveVer.instructions : null,
+          instructions_ar: liveVer ? liveVer.instructions_ar : null,
+          section_count: liveVer ? (liveVer.sections || []).length : 1,
+          question_count: liveVer ? (liveVer.sections || []).reduce((sum, s) => sum + (s.questions || []).length, 0) : 1,
+        }
+      };
+    },
+    exam_start: ({ p_enrollment_id, p_code }) => {
+      const enr = db.enrollments.find(e => e.id === p_enrollment_id);
+      if (!enr || !enr.active) throw new Fail('E_AUTH');
+      const activeCode = db.codes.find(x => x.enrollment_id === p_enrollment_id && x.status === 'active');
+      const cleanInput = (p_code || '').toUpperCase().replace(/[\\s-]+/g, '');
+      const cleanStored = (activeCode ? activeCode.code : '').toUpperCase().replace(/[\\s-]+/g, '');
+      if (!activeCode || cleanInput !== cleanStored) throw new Fail('E_AUTH');
+      let att = db.attempts.find(a => a.enrollment_id === p_enrollment_id && !a.superseded);
+      const token = uid('att-tok');
+      const now = new Date().toISOString();
+      const deadline = new Date(Date.now() + 3600000).toISOString();
+      if (!att) {
+        att = { id: uid('att'), enrollment_id: p_enrollment_id, token, status: 'in_progress', deadline_at: deadline, answers: {}, flags: {}, superseded: false };
+        db.attempts.push(att);
+      } else {
+        att.token = token;
+      }
+      return { ok: true, attempt_token: token, deadline_at: att.deadline_at, server_now: now };
+    },
+    exam_get_paper: ({ p_attempt_token }) => {
+      const att = db.attempts.find(a => a.token === p_attempt_token);
+      if (!att) throw new Fail('E_SESSION_REPLACED');
+      const enr = db.enrollments.find(e => e.id === att.enrollment_id);
+      const c = db.courses.find(x => x.id === enr.course_id);
+      const exam = db.exams.find(x => x.course_id === c.id);
+      const liveVer = exam ? exam.versions.find(v => v.status === 'live') : null;
+      return {
+        deadline_at: att.deadline_at,
+        server_now: new Date().toISOString(),
+        sections: liveVer ? liveVer.sections : [{ id: uid('sec'), title: 'Section A', format: 'mcq', weight: 100, questions: [{ id: uid('q'), prompt: 'Test Question', options: [{ id: 'a', text: 'Option A' }] }] }],
+        answers: att.answers || {},
+        flags: att.flags || {},
+      };
+    },
+    exam_save_answers: ({ p_attempt_token, p_answers }) => {
+      const att = db.attempts.find(a => a.token === p_attempt_token);
+      if (!att) throw new Fail('E_SESSION_REPLACED');
+      (p_answers || []).forEach(a => {
+        att.answers[a.question_id] = a.response;
+        if (a.flagged !== undefined) att.flags[a.question_id] = a.flagged;
+      });
+      return { ok: true, saved_at: new Date().toISOString() };
+    },
+    exam_log_event: () => null,
+    exam_submit: ({ p_attempt_token }) => {
+      const att = db.attempts.find(a => a.token === p_attempt_token);
+      if (!att) throw new Fail('E_SESSION_REPLACED');
+      att.status = 'finalized';
+      return { ok: true, status: 'finalized', pending_marking: false };
+    },
+    exam_get_result: ({ p_enrollment_id }) => {
+      return { status: 'finalized', lesson_pct: 80, exam_pct: 90, final: 85, passed: true, band_label: 'Very Good', band_label_ar: 'جيد جداً', has_certificate: false };
+    },
   };
 
   const hdr = { 'Content-Type': 'application/json' };

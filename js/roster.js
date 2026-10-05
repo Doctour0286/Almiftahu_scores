@@ -3,6 +3,8 @@
 import { rpc, errorMessage } from './api.js';
 import { changeTeacherPin, lockNoticeHtml, wirePinForm } from './auth.js';
 import { renderCourseSettings } from './courses.js';
+import { renderExamsPane, resetExamBuilder } from './exams.js';
+import { renderCodesManagement } from './codes.js';
 import { reload } from './main.js';
 import { openScoreEditor } from './scores.js';
 import { currentCourse, findRow, state } from './state.js';
@@ -22,11 +24,13 @@ const ICON = {
   text: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>',
   gear: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   lock: '<svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  edit: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  key: '<svg class="icon" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
 };
 
 export function renderManageTab() {
   const area = document.getElementById('manageArea');
-  if (!state.teacherUnlocked) { area.innerHTML = lockNoticeHtml(); wirePinForm(); return; }
+  if (!state.teacherUnlocked) { resetExamBuilder(); area.innerHTML = lockNoticeHtml(); wirePinForm(); return; }
 
   area.innerHTML = `
     <div class="teacher-panel">
@@ -55,6 +59,8 @@ export function renderManageTab() {
         <div id="seedLog" style="margin-top:10px; font-size:0.75rem; color:var(--text-muted); white-space:pre-wrap; max-height:160px; overflow-y:auto;"></div>`)}
       ${section('Ar', ICON.text, 'Arabic names <span id="arCount" style="font-weight:400; color:var(--text-muted);"></span>', `<div id="arabicList"></div>`)}
       ${section('Course', ICON.gear, 'Course settings', `<div id="courseSettingsBody"></div>`)}
+      ${section('Exam', ICON.edit, 'Exam builder', `<div id="manageExamsPane"></div>`)}
+      ${section('Codes', ICON.key, 'Exam codes', `<div id="codesArea"></div>`)}
       ${section('Pin', ICON.lock, 'Change teacher PIN', `
         <div class="add-student-form">
           <input type="password" inputmode="numeric" id="oldPinInput" placeholder="Current PIN" autocomplete="off">
@@ -66,8 +72,10 @@ export function renderManageTab() {
       <div id="manageEntryList" class="entry-list"></div>
     </div>`;
 
-  for (const id of ['Add', 'Enroll', 'Seed', 'Ar', 'Course', 'Pin']) wireMenuToggle(`menuToggle${id}`, `menuBody${id}`, `menuChevron${id}`);
+  for (const id of ['Add', 'Enroll', 'Seed', 'Ar', 'Course', 'Exam', 'Codes', 'Pin']) wireMenuToggle(`menuToggle${id}`, `menuBody${id}`, `menuChevron${id}`);
   document.getElementById('menuToggleEnroll').addEventListener('click', loadEnrollOptions);
+  document.getElementById('menuToggleExam').addEventListener('click', renderExamsPane);
+  document.getElementById('menuToggleCodes').addEventListener('click', () => renderCodesManagement('codesArea'));
   document.getElementById('addStudentBtn').addEventListener('click', addStudent);
   for (const id of ['newStudentName', 'newStudentNameAr']) document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addStudent(); });
   document.getElementById('changePinBtn').addEventListener('click', changeTeacherPin);
@@ -86,6 +94,10 @@ export function refreshManageLists(force = false) {
   renderManageEntryList();
   renderArabicNames();
   if (force || !state.courseFormDirty) renderCourseSettings();
+  const examBody = document.getElementById('menuBodyExam');
+  if (examBody && examBody.classList.contains('open')) renderExamsPane();
+  const codesBody = document.getElementById('menuBodyCodes');
+  if (codesBody && codesBody.classList.contains('open')) renderCodesManagement('codesArea');
 }
 
 export function wireMenuToggle(toggleId, bodyId, chevronId) {
