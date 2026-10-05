@@ -250,9 +250,52 @@ const writes = (db) => db.log.filter(l => l.method !== 'GET' && !l.path.startsWi
   ok(await until(() => q(w, "#confirmSubmitBtn")), "submit confirmation modal opened");
   click(w, q(w, "#confirmSubmitBtn"));
   ok(await until(() => q(w, "#finishExamBtn")), "exam submitted successfully and score/finish screen reached");
+  ok(await until(() => q(w, "#startReviewBtn")), "answer review button available on finalized result");
+  click(w, q(w, "#startReviewBtn"));
+  ok(await until(() => q(w, ".exam-review-wrap")), "student answer review screen opened");
+  ok(await until(() => qa(w, ".review-q-card").length > 0), "review questions rendered");
+  click(w, q(w, "#backToResultBtn"));
+  ok(await until(() => q(w, "#finishExamBtn")), "returned back to student result card");
   click(w, q(w, "#finishExamBtn"));
   ok(await until(() => q(w, "#examCodeInput")), "returned to exam entry screen");
+
   click(w, q(w, '.tab-btn[data-tab="manage"]'));
+
+  console.log("== marking queue & essay marking");
+  click(w, q(w, "#menuToggleMarking"));
+  ok(await until(() => q(w, ".marking-overview-wrap")), "marking queue overview rendered");
+  ok(qa(w, ".marking-q-card").length >= 2, "marking queue cards for essays and fills present");
+  const markEssayBtn = q(w, "[data-mark-q]");
+  ok(markEssayBtn, "mark essay button exists");
+  click(w, markEssayBtn);
+  ok(await until(() => q(w, ".marking-by-q-wrap")), "by-question essay marking view rendered");
+  ok(q(w, "#essayPointsInput") && q(w, "#essayCommentInput"), "points and comment inputs present");
+  q(w, "#essayPointsInput").value = "25";
+  q(w, "#essayCommentInput").value = "Good explanation.";
+  click(w, q(w, "#saveOnlyBtn"));
+  ok(await until(() => db.log.some(l => l.path.endsWith("/admin_mark_answer"))), "admin_mark_answer called on save");
+  click(w, q(w, "#backToOverviewBtn"));
+  ok(await until(() => q(w, ".marking-overview-wrap")), "returned to marking overview");
+  const fillReviewBtn = q(w, "[data-review-fill]");
+  ok(fillReviewBtn, "fill review button exists");
+  click(w, fillReviewBtn);
+  ok(await until(() => q(w, ".fill-review-wrap")), "fill-in review view rendered");
+  const acceptBtn = q(w, "[data-accept-text]");
+  ok(acceptBtn, "accept fill answer button present");
+  click(w, acceptBtn);
+  ok(await until(() => db.log.some(l => l.path.endsWith("/admin_accept_fill_answer"))), "admin_accept_fill_answer called on accept");
+
+  console.log("== results view & csv export");
+  click(w, q(w, "#menuToggleResults"));
+  ok(await until(() => q(w, ".results-tab-wrap")), "results table tab rendered");
+  ok(qa(w, ".results-tab-wrap table tbody tr").length > 0, "results table has attempt rows");
+  const detailBtn = q(w, "[data-inspect-attempt]");
+  ok(detailBtn, "inspect detail button present");
+  click(w, detailBtn);
+  ok(await until(() => q(w, "#detailModalOverlay")), "attempt detail inspection modal opened");
+  ok(qa(w, ".modal-q-item").length > 0, "questions and scores shown in inspection modal");
+  click(w, q(w, "#detailModalCloseBtn"));
+  ok(!q(w, "#detailModalOverlay"), "attempt detail modal closed");
 
   console.log('== session expiry, logout, reload');
   db.tokens.clear();

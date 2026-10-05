@@ -39,7 +39,7 @@ async function fetchRowsPublic(course) {
     fetchAll(() => sb.from('enrollments').select('id,student_id,sn,days,bonus_units,active')
       .eq('course_id', course.id).eq('active', true).order('sn').order('id')),
     fetchAll(() => sb.from('students').select('id,name,name_ar').order('id')),
-    fetchAll(() => sb.from('enrollment_results').select('enrollment_id,status,lesson_pct')
+    fetchAll(() => sb.from('enrollment_results').select('enrollment_id,status,lesson_pct,exam_pct,final,passed,band_label,band_label_ar,has_certificate')
       .eq('course_id', course.id).order('enrollment_id')),
   ]);
   const names = new Map(stu.map(s => [s.id, s]));

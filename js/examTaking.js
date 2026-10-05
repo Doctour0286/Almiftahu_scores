@@ -4,7 +4,7 @@
 
 import { rpc, errorMessage } from './api.js';
 import { currentCourse, state } from './state.js';
-import { arHtml, escapeAttr, escapeHtml, setHint, showStatus } from './ui.js';
+import { arHtml, escapeAttr, escapeHtml, fmtNum, setHint, showStatus } from './ui.js';
 
 let currentSession = {
   enrollmentId: null,
@@ -737,34 +737,137 @@ async function handleAutoSubmitOnTimeUp() {
   }
 }
 
-// Results view (P9 / P10)
-function renderStudentResult(container, res) {
+// Results view (PRD Phase 3, Task 3.5: FR-T12, FR-T13)
+async function renderStudentResult(container, initialRes) {
+  let res = initialRes;
+  const enrId = currentSession.enrollmentId;
+  const code = currentSession.code;
+
+  // If we have enrollment credentials, fetch extended result with section breakdown
+  if (enrId && code) {
+    try {
+      const detailed = await rpc('exam_get_result', { p_enrollment_id: enrId, p_code: code });
+      if (detailed && detailed.ok) res = detailed;
+    } catch (_) {
+      // Use initialRes fallback if call fails
+    }
+  }
+
+  const isFinalized = res.status === 'finalized' || res.attempt_status === 'finalized';
+  const hasSections = Array.isArray(res.sections) && res.sections.length > 0;
+  const canReview = !!res.can_review;
+
   container.innerHTML = `
-    <div class="student-result-card" style="max-width:540px; margin:20px auto; background:var(--card-bg); border-radius:var(--radius); border:1.5px solid var(--border-color); padding:28px; text-align:center;">
-      <span style="font-size:2.5rem;">🎉</span>
-      <h3 style="color:var(--emerald-dark); margin:8px 0 4px;">Examination Submitted!</h3>
-      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px;">
-        Your submission has been safely recorded on the server.
+    <div class="student-result-card" style="max-width:600px; margin:20px auto; background:var(--card-bg); border-radius:var(--radius); border:1.5px solid var(--border-color); padding:28px; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,0.04);">
+      <span style="font-size:2.6rem;">${isFinalized ? (res.passed ? '🏆' : '📜') : '⏳'}</span>
+      <h3 style="color:var(--emerald-dark); margin:10px 0 4px; font-family:'Amiri',serif; font-size:1.6rem;">
+        ${isFinalized ? 'Examination Results' : 'Examination Submitted'}
+      </h3>
+      ${res.student_name ? `
+        <div style="font-size:0.95rem; font-weight:600; color:var(--text-dark); margin-bottom:4px;">
+          ${escapeHtml(res.student_name)} ${res.student_name_ar ? `<span dir="rtl" style="font-family:'Amiri',serif;">(${escapeHtml(res.student_name_ar)})</span>` : ''}
+        </div>
+      ` : ''}
+      <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:20px;">
+        ${isFinalized ? 'Your marks have been finalized and recorded.' : 'Your submission has been safely recorded on the server.'}
       </p>
 
-      ${res.pending_marking ? `
-        <div class="status-banner" style="margin-bottom:20px; text-align:left;">
-          <b>Pending Manual Marking:</b> Some questions (such as essays) require manual evaluation by your teacher.
+      ${!isFinalized ? `
+        <div class="status-banner" style="margin-bottom:20px; text-align:left; line-height:1.5;">
+          <b>Pending Teacher Marking:</b> Essay and manual evaluation questions are currently being graded by your teacher.
           Your final combined score and grade band will appear on the leaderboard once marking is complete.
         </div>
       ` : `
-        <div class="score-summary-box" style="margin-bottom:20px;">
-          <div class="total-lbl">Exam Status</div>
-          <div class="total-val" style="font-size:1.6rem; color:var(--emerald-dark); margin:6px 0;">Finalized</div>
-          <p style="font-size:0.8rem; color:var(--gold-ochre); margin:0;">Check the Directory or Leaderboard for your updated standing.</p>
+        <!-- Finalized Score Summary Box -->
+        <div class="score-summary-box" style="margin-bottom:22px; padding:18px; border-radius:8px; background:var(--bg-warm); border:1.5px solid var(--border-color);">
+          <div style="display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div class="total-lbl" style="font-size:0.75rem; text-transform:uppercase;">Final Score</div>
+              <div class="total-val" style="font-size:2rem; color:var(--emerald-dark); font-weight:700; margin:2px 0;">
+                ${res.final !== null && res.final !== undefined ? fmtNum(res.final) : '-'}
+              </div>
+            </div>
+            ${res.band_label ? `
+              <div>
+                <div class="total-lbl" style="font-size:0.75rem; text-transform:uppercase;">Grade Band</div>
+                <div style="font-size:1.15rem; font-weight:700; color:var(--gold-ochre); margin-top:6px;">
+                  ${escapeHtml(res.band_label)} ${res.band_label_ar ? `<span dir="rtl" style="font-family:'Amiri',serif;">(${escapeHtml(res.band_label_ar)})</span>` : ''}
+                </div>
+              </div>
+            ` : ''}
+            <div>
+              <div class="total-lbl" style="font-size:0.75rem; text-transform:uppercase;">Standing</div>
+              <div style="font-size:1.1rem; font-weight:700; color:${res.passed ? 'var(--emerald-dark)' : '#b91c1c'}; margin-top:6px;">
+                ${res.passed ? 'Passed ✓' : 'Did not pass'}
+              </div>
+            </div>
+          </div>
+
+          ${res.lesson_pct !== null && res.exam_pct !== null ? `
+            <div style="display:flex; justify-content:center; gap:18px; margin-top:14px; padding-top:10px; border-top:1px solid var(--border-color); font-size:0.8rem; color:var(--text-muted);">
+              <span>Daily Lessons: <b>${fmtNum(res.lesson_pct)}%</b></span>
+              <span>Examination: <b>${fmtNum(res.exam_pct)}%</b></span>
+            </div>
+          ` : ''}
         </div>
       `}
 
-      <button class="save-btn" id="finishExamBtn" style="margin:0 auto;">Return to Score Portal</button>
+      <!-- Section Breakdown Table -->
+      ${hasSections ? `
+        <div style="margin-bottom:20px; text-align:left;">
+          <h5 style="margin:0 0 8px; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">Section Breakdown</h5>
+          <div style="background:var(--bg-warm); border:1px solid var(--border-color); border-radius:8px; overflow:hidden;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border-color); background:rgba(0,0,0,0.02);">
+                  <th style="padding:8px 12px; text-align:left;">Section</th>
+                  <th style="padding:8px 12px; text-align:right;">Score</th>
+                  <th style="padding:8px 12px; text-align:right;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${res.sections.map(s => `
+                  <tr style="border-bottom:1px solid var(--border-color);">
+                    <td style="padding:8px 12px; font-weight:600;">${escapeHtml(s.title)}</td>
+                    <td style="padding:8px 12px; text-align:right;">
+                      ${s.earned_points !== null ? `<b>${s.earned_points}</b> / ${s.max_points} pts` : `- / ${s.max_points} pts`}
+                    </td>
+                    <td style="padding:8px 12px; text-align:right;">
+                      ${s.pending_essays > 0 ? `
+                        <span style="color:var(--gold-ochre); font-weight:600;">${s.pending_essays} pending</span>
+                      ` : `
+                        <span style="color:var(--emerald-dark); font-weight:600;">Graded ✓</span>
+                      `}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Action Buttons -->
+      <div style="display:flex; flex-direction:column; gap:10px; align-items:center; margin-top:20px;">
+        ${canReview ? `
+          <button class="save-btn" id="startReviewBtn" style="width:100%; max-width:280px; justify-content:center;">
+            Review Questions &amp; Answers &rarr;
+          </button>
+        ` : ''}
+        <button class="ghost-btn" id="finishExamBtn" style="width:100%; max-width:280px; justify-content:center;">
+          Return to Score Portal
+        </button>
+      </div>
     </div>
   `;
 
-  document.getElementById('finishExamBtn').addEventListener('click', () => {
+  if (canReview) {
+    document.getElementById('startReviewBtn')?.addEventListener('click', () => {
+      renderStudentReview(container, enrId, code);
+    });
+  }
+
+  document.getElementById('finishExamBtn')?.addEventListener('click', () => {
     currentSession = {
       enrollmentId: null, code: null, attemptToken: null, deadlineAt: null,
       serverOffsetMs: 0, paper: null, currentSecIdx: 0, currentQIdx: 0,
@@ -773,6 +876,142 @@ function renderStudentResult(container, res) {
     try { sessionStorage.removeItem('mahad_attempt_token'); } catch (_) {}
     renderExamEntry(container);
   });
+}
+
+// Student Answer Review (FR-T13)
+async function renderStudentReview(container, enrollmentId, code) {
+  container.innerHTML = `<div class="empty-state"><span class="spinner"></span> Loading exam review…</div>`;
+
+  try {
+    const rev = await rpc('exam_get_review', { p_enrollment_id: enrollmentId, p_code: code });
+    const sections = rev.sections || [];
+
+    container.innerHTML = `
+      <div class="exam-review-wrap" style="max-width:720px; margin:20px auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <button class="ghost-btn sm" id="backToResultBtn">&larr; Back to Results</button>
+          <span style="font-size:0.85rem; font-weight:600; color:var(--emerald-dark);">Answer Review</span>
+        </div>
+
+        ${sections.map((sec, sIdx) => `
+          <div class="review-section" style="margin-bottom:24px;">
+            <div style="background:var(--bg-warm); border-left:4px solid var(--emerald-dark); border-bottom:1px solid var(--border-color); padding:10px 14px; font-weight:700; color:var(--emerald-dark); margin-bottom:14px; border-radius:4px;">
+              ${escapeHtml(sec.title)} (${sec.format.toUpperCase()} • Weight: ${sec.weight}%)
+            </div>
+
+            <div class="review-questions">
+              ${(sec.questions || []).map((q, qIdx) => {
+                const isEssay = q.format === 'essay';
+                const isMcq = q.format === 'mcq' || q.format === 'tf';
+                const isFill = q.format === 'fill';
+                const pointsDisplay = q.points !== null ? `${q.points} / ${q.max_points} pts` : `- / ${q.max_points} pts`;
+                const isFull = q.fraction === 1;
+                const isZero = q.fraction === 0;
+
+                return `
+                  <div class="review-q-card" style="background:var(--card-bg); border:1.5px solid var(--border-color); border-radius:8px; padding:18px; margin-bottom:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">
+                      <span>Question ${qIdx + 1}</span>
+                      <span class="status-chip" style="background:${isFull ? '#d1fae5' : (isZero ? '#fee2e2' : '#fef3c7')}; color:${isFull ? '#065f46' : (isZero ? '#991b1b' : '#92400e')}; padding:2px 8px; border-radius:12px; font-weight:700;">
+                        ${pointsDisplay}
+                      </span>
+                    </div>
+
+                    <div dir="auto" style="font-weight:600; font-size:1rem; line-height:1.4; color:var(--text-dark); margin-bottom:12px;">
+                      ${escapeHtml(q.prompt)}
+                    </div>
+                    ${q.note ? `<div dir="auto" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px; font-style:italic;">Note: ${escapeHtml(q.note)}</div>` : ''}
+
+                    <!-- MCQ Options Review -->
+                    ${isMcq ? `
+                      <div class="mcq-review-options" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+                        ${(q.options || []).map((opt, oIdx) => {
+                          const letter = String.fromCharCode(65 + oIdx);
+                          const selected = q.response && Array.isArray(q.response.selected) && q.response.selected.includes(opt.id);
+                          const isCorrect = q.key && Array.isArray(q.key.correct_option_ids) && q.key.correct_option_ids.includes(opt.id);
+
+                          let border = '1px solid var(--border-color)';
+                          let bg = 'var(--card-bg)';
+                          if (selected && isCorrect) {
+                            border = '2px solid #059669';
+                            bg = '#ecfdf5';
+                          } else if (selected && !isCorrect) {
+                            border = '2px solid #dc2626';
+                            bg = '#fef2f2';
+                          } else if (isCorrect) {
+                            border = '2px dashed #059669';
+                            bg = '#f0fdf4';
+                          }
+
+                          return `
+                            <div style="border:${border}; background:${bg}; border-radius:6px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+                              <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="font-weight:700; width:22px; height:22px; border-radius:50%; background:var(--bg-warm); display:inline-flex; align-items:center; justify-content:center; font-size:0.78rem;">${letter}</span>
+                                <span dir="auto">${escapeHtml(opt.text)}</span>
+                              </div>
+                              <div style="font-size:0.75rem; font-weight:600;">
+                                ${selected && isCorrect ? '<span style="color:#059669;">Your Answer ✓</span>' : ''}
+                                ${selected && !isCorrect ? '<span style="color:#dc2626;">Your Answer ✗</span>' : ''}
+                                ${!selected && isCorrect ? '<span style="color:#059669;">Correct Answer ✓</span>' : ''}
+                              </div>
+                            </div>
+                          `;
+                        }).join('')}
+                      </div>
+                    ` : ''}
+
+                    <!-- Fill-in Review -->
+                    ${isFill ? `
+                      <div style="background:var(--bg-warm); border-radius:6px; padding:12px; margin-bottom:10px; font-size:0.88rem;">
+                        <div style="margin-bottom:6px;">
+                          <span style="color:var(--text-muted); font-size:0.78rem;">Your Answer: </span>
+                          <b dir="auto">${escapeHtml((q.response && q.response.text) || '(Blank)')}</b>
+                        </div>
+                        <div style="color:var(--emerald-dark); font-size:0.8rem;">
+                          Accepted Answers: <b>${(q.key && q.key.accepted_answers || []).map(a => `"${escapeHtml(a)}"`).join(', ') || '-'}</b>
+                        </div>
+                      </div>
+                    ` : ''}
+
+                    <!-- Essay Review -->
+                    ${isEssay ? `
+                      <div style="background:var(--bg-warm); border-radius:6px; padding:12px; margin-bottom:10px; font-size:0.9rem;">
+                        <div style="color:var(--text-muted); font-size:0.78rem; margin-bottom:4px;">Your Response:</div>
+                        <div dir="auto" style="white-space:pre-wrap; line-height:1.5;">${escapeHtml((q.response && q.response.text) || '(No response submitted)')}</div>
+                      </div>
+                      ${q.comment ? `
+                        <div style="background:#eff6ff; border-left:3px solid #3b82f6; border-radius:4px; padding:10px 14px; font-size:0.85rem; color:#1e40af; margin-top:8px;">
+                          <b>Teacher Feedback:</b> ${escapeHtml(q.comment)}
+                        </div>
+                      ` : ''}
+                    ` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `).join('')}
+
+        <div style="text-align:center; margin:24px 0;">
+          <button class="save-btn" id="reviewBottomBackBtn">Return to Results</button>
+        </div>
+      </div>
+    `;
+
+    const back = () => renderStudentResult(container, { status: 'finalized', can_review: true });
+    document.getElementById('backToResultBtn')?.addEventListener('click', back);
+    document.getElementById('reviewBottomBackBtn')?.addEventListener('click', back);
+  } catch (e) {
+    container.innerHTML = `
+      <div class="empty-state err">
+        Failed to load answer review: ${escapeHtml(errorMessage(e))}
+        <div style="margin-top:14px;"><button class="ghost-btn" id="reviewErrBackBtn">Back</button></div>
+      </div>
+    `;
+    document.getElementById('reviewErrBackBtn')?.addEventListener('click', () => {
+      renderStudentResult(container, { status: 'finalized' });
+    });
+  }
 }
 
 async function resumeActiveExam(container) {

@@ -226,6 +226,41 @@ begin
   assert res->0 ? 'time_away_seconds', 'row has time_away_seconds';
 end $$;
 
+-- ---------- 8. exam_get_result & exam_get_review (AC-3.5) ----------
+do $$
+declare
+  cid uuid := current_setting('t.cid')::uuid;
+  e1 uuid := current_setting('t.e1')::uuid;
+  code1 text := (select code_plain from private.exam_codes where enrollment_id = e1 and status = 'active');
+  res jsonb;
+  rev jsonb;
+  m text;
+begin
+  -- 8a. exam_get_result returns sections breakdown
+  res := public.exam_get_result(e1, code1);
+  assert (res->>'ok')::boolean, 'exam_get_result ok';
+  assert res ? 'sections' and jsonb_array_length(res->'sections') = 3, '3 sections in result breakdown';
+  assert (res->>'can_review')::boolean = false, 'can_review is false while reveal_answers is false';
+
+  -- 8b. exam_get_review before reveal_answers is enabled -> E_REVIEW_DISABLED
+  m := null;
+  begin perform public.exam_get_review(e1, code1); exception when others then get stacked diagnostics m = message_text; end;
+  assert m = 'E_REVIEW_DISABLED', 'refuses review when reveal_answers is off: ' || coalesce(m, 'null');
+
+  -- 8c. Turn on reveal_answers
+  update public.courses set reveal_answers = true where id = cid;
+
+  -- 8d. exam_get_result now reports can_review = true
+  res := public.exam_get_result(e1, code1);
+  assert (res->>'can_review')::boolean = true, 'can_review is now true';
+
+  -- 8e. exam_get_review succeeds and returns questions with student responses, keys, and teacher comment
+  rev := public.exam_get_review(e1, code1);
+  assert (rev->>'ok')::boolean, 'exam_get_review ok';
+  assert jsonb_array_length(rev->'sections') = 3, 'review has 3 sections';
+  assert rev->'sections'->2->'questions'->0->>'comment' = 'Well explained.', 'essay teacher comment returned';
+end $$;
+
 -- ---------- 7. Security: public anon cannot call admin_* RPCs ----------
 set role anon;
 do $$

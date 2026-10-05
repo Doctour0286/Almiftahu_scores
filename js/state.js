@@ -62,11 +62,28 @@ export function normalizeRow(raw, course) {
     days, bonusUnits,
     total: lessonPoints(days, bonusUnits, course),
     bonusPoints: bonusPoints(bonusUnits, course),
+    lessonPct: typeof raw.lesson_pct === "number" ? raw.lesson_pct : null,
+    examPct: typeof raw.exam_pct === "number" ? raw.exam_pct : null,
+    final: typeof raw.final === "number" ? raw.final : null,
+    passed: raw.passed !== undefined ? raw.passed : null,
+    bandLabel: raw.band_label || "",
+    bandLabelAr: raw.band_label_ar || "",
+    hasCertificate: !!raw.has_certificate,
   };
 }
 
 // Competition ranking (D-26): tied totals share a rank, the next rank skips (1, 2, 2, 4).
-export function rankRows(rows) {
+export function rankRows(rows, course = null) {
+  const isExamMode = !!course && !!course.exam_live;
+  if (isExamMode) {
+    const finalized = rows.filter(r => r.status === "finalized" && typeof r.final === "number");
+    const sorted = [...finalized].sort((a, b) => b.final - a.final || a.sn - b.sn);
+    let rank = 0, prev = null;
+    return sorted.map((r, i) => {
+      if (prev === null || r.final !== prev) { rank = i + 1; prev = r.final; }
+      return { row: r, rank };
+    });
+  }
   const sorted = [...rows].sort((a, b) => b.total - a.total || a.sn - b.sn);
   let rank = 0, prev = null;
   return sorted.map((r, i) => {

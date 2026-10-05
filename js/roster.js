@@ -5,6 +5,8 @@ import { changeTeacherPin, lockNoticeHtml, wirePinForm } from './auth.js';
 import { renderCourseSettings } from './courses.js';
 import { renderExamsPane, resetExamBuilder } from './exams.js';
 import { renderCodesManagement } from './codes.js';
+import { renderMarkingTab } from './marking.js';
+import { renderResultsTab } from './results.js';
 import { reload } from './main.js';
 import { openScoreEditor } from './scores.js';
 import { currentCourse, findRow, state } from './state.js';
@@ -26,6 +28,8 @@ const ICON = {
   lock: '<svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
   edit: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
   key: '<svg class="icon" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
+  check: '<svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+  table: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>',
 };
 
 export function renderManageTab() {
@@ -61,6 +65,8 @@ export function renderManageTab() {
       ${section('Course', ICON.gear, 'Course settings', `<div id="courseSettingsBody"></div>`)}
       ${section('Exam', ICON.edit, 'Exam builder', `<div id="manageExamsPane"></div>`)}
       ${section('Codes', ICON.key, 'Exam codes', `<div id="codesArea"></div>`)}
+      ${section('Marking', ICON.check, 'Marking queue <span id="markingBadge" style="font-weight:400; color:var(--text-muted);"></span>', `<div id="markingArea"></div>`)}
+      ${section('Results', ICON.table, 'Exam results & CSV', `<div id="resultsArea"></div>`)}
       ${section('Pin', ICON.lock, 'Change teacher PIN', `
         <div class="add-student-form">
           <input type="password" inputmode="numeric" id="oldPinInput" placeholder="Current PIN" autocomplete="off">
@@ -72,10 +78,12 @@ export function renderManageTab() {
       <div id="manageEntryList" class="entry-list"></div>
     </div>`;
 
-  for (const id of ['Add', 'Enroll', 'Seed', 'Ar', 'Course', 'Exam', 'Codes', 'Pin']) wireMenuToggle(`menuToggle${id}`, `menuBody${id}`, `menuChevron${id}`);
+  for (const id of ['Add', 'Enroll', 'Seed', 'Ar', 'Course', 'Exam', 'Codes', 'Marking', 'Results', 'Pin']) wireMenuToggle(`menuToggle${id}`, `menuBody${id}`, `menuChevron${id}`);
   document.getElementById('menuToggleEnroll').addEventListener('click', loadEnrollOptions);
   document.getElementById('menuToggleExam').addEventListener('click', renderExamsPane);
   document.getElementById('menuToggleCodes').addEventListener('click', () => renderCodesManagement('codesArea'));
+  document.getElementById('menuToggleMarking').addEventListener('click', () => renderMarkingTab('markingArea'));
+  document.getElementById('menuToggleResults').addEventListener('click', () => renderResultsTab('resultsArea'));
   document.getElementById('addStudentBtn').addEventListener('click', addStudent);
   for (const id of ['newStudentName', 'newStudentNameAr']) document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addStudent(); });
   document.getElementById('changePinBtn').addEventListener('click', changeTeacherPin);
@@ -98,6 +106,10 @@ export function refreshManageLists(force = false) {
   if (examBody && examBody.classList.contains('open')) renderExamsPane();
   const codesBody = document.getElementById('menuBodyCodes');
   if (codesBody && codesBody.classList.contains('open')) renderCodesManagement('codesArea');
+  const markingBody = document.getElementById('menuBodyMarking');
+  if (markingBody && markingBody.classList.contains('open')) renderMarkingTab('markingArea');
+  const resultsBody = document.getElementById('menuBodyResults');
+  if (resultsBody && resultsBody.classList.contains('open')) renderResultsTab('resultsArea');
 }
 
 export function wireMenuToggle(toggleId, bodyId, chevronId) {

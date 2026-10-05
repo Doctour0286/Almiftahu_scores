@@ -201,7 +201,7 @@ let phase3 = false;
 {
   const r = await call('POST', '/rpc/admin_marking_overview', { body: { p_token: 'probe-garbage', p_course_id: ZERO } });
   phase3 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE3 === '1';
-  if (phase3) Object.assign(adminCalls, PHASE3_CALLS);
+  if (phase3) { Object.assign(adminCalls, PHASE3_CALLS); if (!STUDENT_RPCS.includes('exam_get_review')) STUDENT_RPCS.push('exam_get_review'); }
   record('PASS', `4. Phase 3 marking RPCs ${phase3 ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE3=1 to probe them anyway)'}`);
 }
 for (const [fn, args] of Object.entries(adminCalls)) {
@@ -245,7 +245,9 @@ if (!phase2) {
   record('SKIP', '6. exam_* wrong-code probes', 'Phase 2 is not installed');
 } else {
   // A wrong code for an id that is not an enrollment is refused WITHOUT leaving a throttle row, so this is harmless.
-  for (const fn of ['exam_check', 'exam_start', 'exam_get_result']) {
+  const codeCalls = ['exam_check', 'exam_start', 'exam_get_result'];
+  if (phase3) codeCalls.push('exam_get_review');
+  for (const fn of codeCalls) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_enrollment_id: ZERO, p_code: '000000' } });
     if (r.status === 200 && r.json && r.json.ok === false && r.json.error === 'E_AUTH') record('PASS', `6. ${fn} with an unknown enrollment -> E_AUTH`);
     else record('FAIL', `6. ${fn} with an unknown enrollment -> E_AUTH`, describe(r));

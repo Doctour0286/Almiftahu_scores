@@ -31,7 +31,7 @@ export function renderDirectory() {
   grid.innerHTML = filtered.map(s => `
     <div class="student-card" data-id="${escapeAttr(s.id)}">
       <div class="student-info"><h3>${escapeHtml(s.name)}</h3>${arHtml(s.nameAr)}<span>S/N: ${s.sn}</span></div>
-      ${isScored(course) ? `<div class="view-badge">${fmtNum(s.total)} / ${fmtNum(course.lesson_max)}</div>` : ''}
+      ${s.status === "finalized" && s.final !== null ? `<div class="view-badge" style="background:#ecfdf5; color:#065f46; font-weight:700;">${fmtNum(s.final)}% ${s.bandLabel ? `• ${escapeHtml(s.bandLabel)}` : ""}</div>` : (s.status === "submitted" ? `<div class="view-badge" style="background:#fef3c7; color:#92400e;">Exam pending</div>` : (isScored(course) ? `<div class="view-badge">${fmtNum(s.total)} / ${fmtNum(course.lesson_max)}</div>` : ""))}
     </div>`).join('');
   grid.querySelectorAll('.student-card').forEach(card => card.addEventListener('click', () => openStudentModal(card.dataset.id)));
 }
@@ -45,8 +45,13 @@ export function openStudentModal(id) {
   const scored = isScored(course);
   const summary = document.querySelector('#scoreModal .score-summary-box');
   summary.style.display = scored ? '' : 'none';
-  document.getElementById('modalTotal').textContent = fmtNum(s.total);
-  document.getElementById('modalTotalLbl').textContent = `Total Accumulated Score (max ${fmtNum(course.lesson_max)})`;
+  if (s.status === "finalized" && s.final !== null) {
+    document.getElementById('modalTotal').textContent = fmtNum(s.final);
+    document.getElementById('modalTotalLbl').textContent = `Final Exam & Course Score (Band: ${escapeHtml(s.bandLabel || "Pass")})${s.hasCertificate ? " • Certificate issued ✓" : ""}`;
+  } else {
+    document.getElementById('modalTotal').textContent = fmtNum(s.total);
+    document.getElementById('modalTotalLbl').textContent = `Total Accumulated Score (max ${fmtNum(course.lesson_max)})`;
+  }
   const grid = document.getElementById('modalScoreGrid');
   grid.innerHTML = !scored ? '' : s.days.map((score, i) => {
     const bonus = s.bonusUnits[i] || 0;
@@ -76,11 +81,37 @@ export function renderLeaderboard() {
   const list = document.getElementById('leaderboardList');
   if (!state.loaded) { list.innerHTML = LOADING; return; }
   const course = currentCourse();
-  if (course && !isScored(course)) {          // exam-only course: rankings come with the exam (Phase 3)
+  const isExamMode = !!course && !!course.exam_live;
+
+  if (isExamMode) {
+    const ranked = rankRows(activeRows(), course);
+    if (ranked.length === 0) {
+      list.innerHTML = `<div class="empty-state">Rankings appear once students have completed the exam.</div>`;
+      return;
+    }
+    list.innerHTML = ranked.map(({ row: s, rank }) => {
+      let badgeClass = '', rankDisplay = rank;
+      if (rank === 1) { badgeClass = 'rank-1'; rankDisplay = medalIcon('#B45309'); }
+      else if (rank === 2) { badgeClass = 'rank-2'; rankDisplay = medalIcon('#475569'); }
+      else if (rank === 3) { badgeClass = 'rank-3'; rankDisplay = medalIcon('#C2410C'); }
+      return `
+        <div class="leader-item">
+          <div class="leader-rank ${badgeClass}">${rankDisplay}</div>
+          <div class="leader-name">${escapeHtml(s.name)}${arHtml(s.nameAr)}</div>
+          <div class="leader-score">
+            ${fmtNum(s.final)}% ${s.bandLabel ? `<span class="band-tag" style="font-size:0.75rem; margin-left:6px;">${escapeHtml(s.bandLabel)}</span>` : ""}
+          </div>
+        </div>`;
+    }).join('');
+    return;
+  }
+
+  if (course && !isScored(course)) {
     list.innerHTML = `<div class="empty-state">Rankings appear once students have completed the exam.</div>`;
     return;
   }
-  const ranked = rankRows(activeRows());
+
+  const ranked = rankRows(activeRows(), course);
   if (ranked.length === 0) { list.innerHTML = `<div class="empty-state">No students yet.</div>`; return; }
   list.innerHTML = ranked.map(({ row: s, rank }) => {
     let badgeClass = '', rankDisplay = rank;
@@ -105,10 +136,14 @@ export function renderTable() {
   if (!state.loaded) { headerRow.innerHTML = ''; body.innerHTML = `<tr><td class="empty-state">Loading…</td></tr>`; return; }
   const course = currentCourse();
   const scored = isScored(course);
+  const isExamMode = !!course && !!course.exam_live;
   const heads = ['S/N', 'Student Name'];
   if (scored) {
     for (let i = 0; i < course.day_count; i++) heads.push(unitHtml(course, i));
     heads.push('Bonus', 'Total');
+  }
+  if (isExamMode) {
+    heads.push('Exam %', 'Final');
   }
   headerRow.innerHTML = heads.map(h => `<th>${h}</th>`).join('');
   const rows = activeRows();
@@ -119,6 +154,7 @@ export function renderTable() {
       <td class="name-cell">${escapeHtml(s.name)}${arHtml(s.nameAr)}</td>
       ${scored ? s.days.map(d => `<td>${d !== null ? d : '-'}</td>`).join('') : ''}
       ${scored ? `<td>${fmtNum(s.bonusPoints)}</td><td class="total-cell">${fmtNum(s.total)}</td>` : ''}
+      ${isExamMode ? `<td>${s.examPct !== null ? fmtNum(s.examPct) + "%" : "-"}</td><td class="total-cell">${s.final !== null ? fmtNum(s.final) : "-"}</td>` : ''}
     </tr>`).join('');
 }
 document.getElementById('search').addEventListener('input', renderDirectory);

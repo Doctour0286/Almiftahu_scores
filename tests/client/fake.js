@@ -330,8 +330,89 @@ function makeBackend() {
       att.status = 'finalized';
       return { ok: true, status: 'finalized', pending_marking: false };
     },
-    exam_get_result: ({ p_enrollment_id }) => {
-      return { status: 'finalized', lesson_pct: 80, exam_pct: 90, final: 85, passed: true, band_label: 'Very Good', band_label_ar: 'جيد جداً', has_certificate: false };
+    admin_marking_overview: ({ p_token, p_course_id }) => {
+      auth(p_token);
+      return {
+        essays: [{ id: "q-essay", prompt: "Explain kindness", section_title: "Essay Section", value: 30, submitted_count: 2, marked_count: 1, pending_count: 1 }],
+        fills: [{ id: "q-fill", prompt: "Capital of Nigeria is ____", section_title: "Fill Section", value: 20, unmatched_count: 1 }]
+      };
+    },
+    admin_essay_answers: ({ p_token, p_question_id }) => {
+      auth(p_token);
+      return {
+        question: { id: p_question_id, prompt: "Explain kindness", value: 30, section_title: "Essay Section" },
+        answers: [{ attempt_id: "att-1", sn: 1, student_name: "Ahmad Bello", text: "Kindness is virtue.", fraction: null, points: null, marked_by: null, comment: "" }]
+      };
+    },
+    admin_attempt_detail: ({ p_token, p_attempt_id }) => {
+      auth(p_token);
+      return {
+        attempt: { id: p_attempt_id, student_name: "Ahmad Bello", sn: 1, status: "submitted", started_at: "2026-10-05T12:00:00Z", submitted_at: "2026-10-05T12:45:00Z", tab_leaves: 0, time_away_seconds: 0 },
+        sections: [{ id: "sec-1", title: "Section 1", format: "essay", weight: 100, questions: [{ id: "q-1", prompt: "Explain kindness", value: 30, response: { text: "Kindness is virtue." }, fraction: null, points: null, marked_by: null, comment: "" }] }],
+        events: []
+      };
+    },
+    admin_mark_answer: ({ p_token, p_attempt_id, p_question_id, p_points, p_comment }) => {
+      auth(p_token);
+      return { ok: true, points: p_points, fraction: p_points / 30, status: "finalized" };
+    },
+    admin_fill_review: ({ p_token, p_question_id }) => {
+      auth(p_token);
+      return { question_id: p_question_id, prompt: "Capital of Nigeria is ____", accepted_answers: ["Abuja"], unmatched: [{ text: "Lagos", count: 2 }] };
+    },
+    admin_accept_fill_answer: ({ p_token, p_question_id, p_text }) => {
+      auth(p_token);
+      return { ok: true };
+    },
+    admin_correct_key: ({ p_token, p_question_id, p_new_key, p_confirm }) => {
+      auth(p_token);
+      if (!p_confirm) throw new Fail("E_CONFIRM_REQUIRED");
+      return { ok: true, affected_attempts: 1 };
+    },
+    admin_results: ({ p_token, p_course_id }) => {
+      auth(p_token);
+      return [
+        { attempt_id: "att-1", enrollment_id: "enr-1", sn: 1, student_name: "Ahmad Bello", student_name_ar: "أحمد بللو", status: "finalized", exam_pct: 90, final: 85, band_label: "Very Good", passed: true, tab_leaves: 0, time_away_seconds: 0, started_at: "2026-10-05T12:00:00Z", submitted_at: "2026-10-05T12:45:00Z", finalized_at: "2026-10-05T13:00:00Z" }
+      ];
+    },
+    exam_get_result: ({ p_enrollment_id, p_code }) => {
+      return {
+        ok: true,
+        status: "finalized",
+        attempt_status: "finalized",
+        student_name: "Ahmad Bello",
+        student_name_ar: "أحمد بللو",
+        course_name: "Al-Aadaab",
+        lesson_pct: 80,
+        exam_pct: 90,
+        final: 85,
+        passed: true,
+        band_label: "Very Good",
+        band_label_ar: "جيد جداً",
+        has_certificate: false,
+        can_review: true,
+        reveal_answers: true,
+        sections: [
+          { id: "sec-1", title: "Section A", format: "mcq", weight: 50, earned_points: 40, max_points: 50, pending_essays: 0, status: "graded" },
+          { id: "sec-2", title: "Section B", format: "essay", weight: 50, earned_points: 45, max_points: 50, pending_essays: 0, status: "graded" }
+        ]
+      };
+    },
+    exam_get_review: ({ p_enrollment_id, p_code }) => {
+      return {
+        ok: true,
+        sections: [
+          {
+            id: "sec-1",
+            title: "Section A",
+            format: "mcq",
+            weight: 50,
+            questions: [
+              { id: "q-1", prompt: "Question 1", max_points: 50, options: [{ id: "a", text: "Option A" }, { id: "b", text: "Option B" }], response: { selected: ["a"] }, key: { correct_option_ids: ["a"] }, fraction: 1, points: 50, marked_by: "auto", comment: null }
+            ]
+          }
+        ]
+      };
     },
   };
 
