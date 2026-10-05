@@ -244,6 +244,10 @@ begin
   r := public.exam_submit(tok);
   assert (r->>'ok')::boolean and (r->>'pending_marking')::boolean, 'submit ok, the essay is pending: ' || r::text;
 
+  -- calling submit again is idempotent (AC-2.8)
+  r := public.exam_submit(tok);
+  assert (r->>'ok')::boolean and (r->>'pending_marking')::boolean, 'second submit is idempotent: ' || r::text;
+
   m := null;
   begin perform public.exam_start(e1, code); exception when others then get stacked diagnostics m = message_text; end;
   assert m = 'E_ATTEMPT_EXISTS', 'cannot start a second attempt: ' || coalesce(m, 'null');

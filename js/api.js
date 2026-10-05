@@ -42,6 +42,15 @@ const MESSAGES = {
   E_CONFIRM_REQUIRED: 'This change needs confirmation.',
   E_HAS_CERTIFICATE: "This student has a certificate and can't be deleted.",
   E_NETWORK: 'Could not reach the server. Check your connection and try again.',
+  E_SESSION_REPLACED: 'This exam was opened on another device or tab.',
+  E_ATTEMPT_EXISTS: 'You have already submitted this exam.',
+  E_ATTEMPT_CLOSED: 'Time is up. Your exam has been submitted.',
+  E_EXPIRED: 'Time is up. Your exam has been submitted.',
+  E_NO_LIVE_EXAM: "The exam isn't available yet.",
+  E_NOT_ELIGIBLE: 'You are not yet eligible to sit this exam.',
+  E_NOT_READY: 'Your result is still being marked.',
+  E_REVIEW_DISABLED: "Answer review isn't available for this course.",
+  E_NO_ARABIC_NAME: "Add the student's Arabic name first.",
 };
 export function errorMessage(err, ctx = {}) {
   if (!err) return 'Something went wrong. Try again.';

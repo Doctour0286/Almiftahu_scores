@@ -338,13 +338,14 @@ function renderStudentMcq(q, saved) {
 
   return `
     <div class="student-options-list">
-      ${options.map(opt => {
+      ${options.map((opt, idx) => {
         const checked = selected.includes(opt.id);
+        const letter = String.fromCharCode(65 + idx);
         return `
           <label class="student-opt-label ${checked ? 'selected' : ''}">
             <input type="checkbox" class="student-mcq-chk" value="${escapeAttr(opt.id)}" ${checked ? 'checked' : ''}>
-            <span class="opt-id-tag">${opt.id}</span>
-            <span dir="auto" style="flex:1;">${escapeHtml(opt.text || opt.id)}</span>
+            <span class="opt-id-tag">${letter}</span>
+            <span dir="auto" style="flex:1;">${escapeHtml(opt.text || '')}</span>
           </label>
         `;
       }).join('')}
@@ -682,18 +683,38 @@ function openSubmitConfirmModal(container) {
   document.getElementById('confirmSubmitBtn').addEventListener('click', async () => {
     const hint = document.getElementById('submitModalHint');
     const btn = document.getElementById('confirmSubmitBtn');
+    if (currentSession.isSubmitting) return;
+    currentSession.isSubmitting = true;
     btn.disabled = true;
     setHint(hint, 'Submitting exam…', '');
 
     try {
       await flushAnswerSaves();
       const res = await rpc('exam_submit', { p_attempt_token: currentSession.attemptToken });
+      currentSession.isSubmitting = false;
       clearInterval(currentSession.timerInterval);
       sessionStorage.removeItem('mahad_attempt_token');
       modal.style.display = 'none';
 
       renderStudentResult(container, res);
     } catch (e) {
+      currentSession.isSubmitting = false;
+      // If the attempt was already recorded as submitted/finalized on the server, recover gracefully
+      if (e.code === 'E_SESSION_REPLACED' || e.code === 'E_ATTEMPT_EXISTS') {
+        try {
+          const res = await rpc('exam_get_result', {
+            p_enrollment_id: currentSession.enrollmentId,
+            p_code: currentSession.code,
+          });
+          if (res && res.status && res.status !== 'in_progress' && res.status !== 'eligible') {
+            clearInterval(currentSession.timerInterval);
+            sessionStorage.removeItem('mahad_attempt_token');
+            modal.style.display = 'none';
+            renderStudentResult(container, res);
+            return;
+          }
+        } catch (_) {}
+      }
       setHint(hint, errorMessage(e), 'err');
       btn.disabled = false;
     }
