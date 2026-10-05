@@ -81,7 +81,7 @@ function expectDenied(name, r) {
 
 // ---------- 1. private schema and private functions ----------
 for (const t of ['secrets', 'teacher_sessions', 'auth_throttle', 'system_params', 'institution_settings',
-  'exams', 'exam_versions', 'sections', 'questions', 'question_keys', 'v_question_values']) {   // the last six: Phase 1 (AC-1.1); "not in schema cache" counts as denied too
+  'exams', 'exam_versions', 'sections', 'questions', 'question_keys', 'v_question_values', 'certificates', 'certificate_counters']) {   // the last six: Phase 1 (AC-1.1); "not in schema cache" counts as denied too
   expectDenied(`1. read private.${t}`, await call('GET', `/${t}?select=*&limit=1`, { headers: { 'Accept-Profile': 'private' } }));
 }
 for (const [fn, args] of [['fail', { p_code: 'E_X' }], ['require_teacher', { p_token: 'x' }], ['param', { p_key: 'x', p_default: 1 }],
@@ -189,6 +189,13 @@ const PHASE3_CALLS = {
   admin_correct_key:         { p_question_id: ZERO, p_new_key: {}, p_confirm: false },
   admin_results:             { p_course_id: ZERO },
 };
+const PHASE4_CALLS = {
+  admin_list_certificates:    { p_course_id: ZERO },
+  admin_approve_certificates: { p_enrollment_ids: [ZERO] },
+  admin_revoke_certificate:   { p_enrollment_id: ZERO, p_reason: "probe-test" },
+  admin_get_institution:      {},
+  admin_save_institution:     { p_settings: {} },
+};
 const STUDENT_RPCS = ['exam_check', 'exam_start', 'exam_get_paper', 'exam_save_answers', 'exam_log_event', 'exam_submit', 'exam_get_result'];
 let phase2 = false;
 {
@@ -203,6 +210,16 @@ let phase3 = false;
   phase3 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE3 === '1';
   if (phase3) { Object.assign(adminCalls, PHASE3_CALLS); if (!STUDENT_RPCS.includes('exam_get_review')) STUDENT_RPCS.push('exam_get_review'); }
   record('PASS', `4. Phase 3 marking RPCs ${phase3 ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE3=1 to probe them anyway)'}`);
+}
+let phase4 = false;
+{
+  const r = await call('POST', '/rpc/admin_list_certificates', { body: { p_token: 'probe-garbage', p_course_id: ZERO } });
+  phase4 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE4 === '1';
+  if (phase4) {
+    Object.assign(adminCalls, PHASE4_CALLS);
+    if (!STUDENT_RPCS.includes('get_certificate')) STUDENT_RPCS.push('get_certificate');
+  }
+  record('PASS', `4. Phase 4 certificate RPCs ${phase4 ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE4=1 to probe them anyway)'}`);
 }
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
@@ -247,6 +264,7 @@ if (!phase2) {
   // A wrong code for an id that is not an enrollment is refused WITHOUT leaving a throttle row, so this is harmless.
   const codeCalls = ['exam_check', 'exam_start', 'exam_get_result'];
   if (phase3) codeCalls.push('exam_get_review');
+  if (phase4) codeCalls.push('get_certificate');
   for (const fn of codeCalls) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_enrollment_id: ZERO, p_code: '000000' } });
     if (r.status === 200 && r.json && r.json.ok === false && r.json.error === 'E_AUTH') record('PASS', `6. ${fn} with an unknown enrollment -> E_AUTH`);
@@ -266,11 +284,17 @@ if (!phase2) {
   }
 }
 
+  if (phase4) {
+    const r = await call('POST', '/rpc/verify_certificate', { body: { p_number: 'MMI-PROBE-0000' } });
+    if (r.status === 200 && r.json && r.json.ok && r.json.status === 'not_found') record('PASS', '6. verify_certificate with unknown number -> not_found');
+    else record('FAIL', '6. verify_certificate with unknown number -> not_found', describe(r));
+  }
+
 // ---------- 7. the whole exposed surface is exactly what we expect ----------
 {
   const r = await call('GET', '/');
   const expectedTables = new Set(['courses', 'students', 'enrollments', 'enrollment_results']);
-  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : [])]);
+  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : [])]);
   if (r.status === 200 && r.json && r.json.paths) {
     const paths = Object.keys(r.json.paths).filter((p) => p !== '/');
     const extraTables = paths.filter((p) => !p.startsWith('/rpc/') && !expectedTables.has(p.slice(1)));
