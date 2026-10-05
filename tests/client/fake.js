@@ -213,7 +213,7 @@ function makeBackend() {
       if (!enr) throw new Fail('E_NOT_FOUND');
       const c = courseOf(enr.course_id);
       if (!c.exam_live) throw new Fail('E_VALIDATION', 'No live exam.');
-      const codeStr = 'EXAM-' + Math.floor(1000 + Math.random() * 9000);
+      const codeStr = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
       db.codes = db.codes.filter(x => !(x.enrollment_id === p_enrollment_id && x.status === 'active'));
       db.codes.push({ id: uid('code'), enrollment_id: p_enrollment_id, code: codeStr, status: 'active' });
       return { code: codeStr };
@@ -226,11 +226,16 @@ function makeBackend() {
       const eligible = db.enrollments.filter(e => e.course_id === p_course_id && e.active && !db.codes.some(x => x.enrollment_id === e.id && x.status === 'active')).slice(0, 40);
       eligible.forEach(e => {
         const s = db.students.find(x => x.id === e.student_id);
-        const codeStr = 'EXAM-' + Math.floor(1000 + Math.random() * 9000);
+        const codeStr = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
         db.codes.push({ id: uid('code'), enrollment_id: e.id, code: codeStr, status: 'active' });
         out.push({ enrollment_id: e.id, sn: e.sn, name: s.name, name_ar: s.name_ar, code: codeStr });
       });
       return out;
+    },
+    admin_list_codes: ({ p_token, p_course_id }) => {
+      auth(p_token);
+      return db.codes.filter(x => x.status === 'active' && (db.enrollments.find(e => e.id === x.enrollment_id) || {}).course_id === p_course_id)
+        .map(x => ({ enrollment_id: x.enrollment_id, code: x.code === undefined ? null : x.code, created_at: '2026-10-05T00:00:00Z' }));
     },
     admin_revoke_code: ({ p_token, p_enrollment_id }) => {
       auth(p_token);

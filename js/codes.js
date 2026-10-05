@@ -4,10 +4,48 @@
 import { rpc, errorMessage } from './api.js';
 import { reload } from './main.js';
 import { currentCourse, state } from './state.js';
-import { arHtml, confirmDialog, escapeHtml, setHint, showStatus } from './ui.js';
+import { arHtml, confirmDialog, escapeAttr, escapeHtml, setHint, showStatus } from './ui.js';
 
-let generatedSlips = [];
-let sessionCodes = {}; // [{ sn, name, name_ar, code, course_name }]
+// Active exam codes of the current course, loaded from the server (admin_list_codes) so they stay visible
+// until a new code is generated: enrollment id -> code string, or null for a code issued before codes could be
+// shown (hash only; the teacher uses "New Code" for those).
+let activeCodes = {};
+let codesLoadedFor = null;   // course id whose codes are in activeCodes
+let codesLoading = false;
+
+async function refreshCodes(containerId) {
+  const course = currentCourse();
+  if (!course || codesLoading) return;
+  codesLoading = true;
+  try {
+    const list = await rpc('admin_list_codes', { p_course_id: course.id });
+    activeCodes = {};
+    (list || []).forEach(x => { activeCodes[x.enrollment_id] = x.code || null; });
+  } catch (e) {
+    showStatus('Could not load exam codes: ' + errorMessage(e), true);
+  } finally {
+    codesLoadedFor = course.id;   // also after an error, so a failure cannot loop
+    codesLoading = false;
+  }
+  renderCodesManagement(containerId);
+}
+
+function currentSlips() {
+  const course = currentCourse();
+  return (state.rows || []).filter(r => r.active && activeCodes[r.id]).map(r => ({
+    sn: r.sn, name: r.name, name_ar: r.nameAr, code: activeCodes[r.id], course_name: course ? course.name : '',
+  }));
+}
+
+function renderCodeCell(r) {
+  if (!(r.id in activeCodes)) return '<span style="color:var(--text-muted);">&mdash;</span>';
+  const code = activeCodes[r.id];
+  if (!code) {
+    return '<span style="font-size:0.75rem; color:var(--text-muted);" title="Issued before codes could be shown. Click New Code to issue one you can see.">Issued earlier (hidden)</span>';
+  }
+  return `<span class="exam-code-value" style="font-family:monospace; font-weight:800; font-size:1.05rem; letter-spacing:2px; color:var(--emerald-dark);">${escapeHtml(code)}</span>
+    <button class="ghost-btn sm" data-copy-code="${escapeAttr(code)}" title="Copy code">Copy</button>`;
+}
 
 export function renderCodesManagement(containerId = 'codesArea') {
   const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
@@ -39,10 +77,10 @@ export function renderCodesManagement(containerId = 'codesArea') {
           <svg class="icon sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Print Eligibility List
         </button>
-        ${generatedSlips.length > 0 ? `
+        ${currentSlips().length > 0 ? `
           <button class="ghost-btn sm" id="printSlipsBtn">
             <svg class="icon sm" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-            Print Code Slips (${generatedSlips.length})
+            Print Code Slips (${currentSlips().length})
           </button>
         ` : ''}
       </div>
@@ -55,13 +93,14 @@ export function renderCodesManagement(containerId = 'codesArea') {
           <tr>
             <th style="width:50px;">S/N</th>
             <th>Student Name</th>
+            <th>Exam Code</th>
             <th>Exam Status</th>
             <th style="text-align:right;">Actions</th>
           </tr>
         </thead>
         <tbody>
           ${rows.length === 0 ? `
-            <tr><td colspan="4" class="empty-state">No students enrolled in this course yet.</td></tr>
+            <tr><td colspan="5" class="empty-state">No students enrolled in this course yet.</td></tr>
           ` : rows.map(r => `
             <tr class="code-row ${r.active ? '' : 'inactive-row'}">
               <td><b>#${r.sn}</b></td>
@@ -69,10 +108,11 @@ export function renderCodesManagement(containerId = 'codesArea') {
                 <div style="font-weight:600; color:var(--emerald-dark);">${escapeHtml(r.name)} ${arHtml(r.nameAr)}</div>
                 ${!r.active ? '<span class="inactive-pill">Inactive</span>' : ''}
               </td>
+              <td>${renderCodeCell(r)}</td>
               <td>${renderEligibilityChip(r, course)}</td>
               <td style="text-align:right;">
                 <div style="display:inline-flex; gap:6px; align-items:center;">
-                  ${r.status === 'eligible' ? `
+                  ${r.status !== 'not_eligible' && !(r.id in activeCodes) ? `
                     <button class="save-btn sm" data-gen-code="${r.id}" ${!course.exam_live ? 'disabled' : ''}>Generate Code</button>
                   ` : ''}
                   ${r.status === 'not_eligible' ? `
@@ -81,7 +121,9 @@ export function renderCodesManagement(containerId = 'codesArea') {
                   ${['in_progress', 'submitted', 'finalized'].includes(r.status) ? `
                     <button class="ghost-btn sm danger" data-reset-att="${r.id}" title="Allow re-sit">Reset Attempt</button>
                   ` : ''}
-                  <button class="ghost-btn sm" data-regen-code="${r.id}" title="Issue new code (revokes old)" ${!course.exam_live ? 'disabled' : ''}>New Code</button>
+                  ${r.status !== 'not_eligible' && (r.id in activeCodes) ? `
+                    <button class="ghost-btn sm" data-regen-code="${r.id}" title="Issue new code (revokes old)" ${!course.exam_live ? 'disabled' : ''}>New Code</button>
+                  ` : ''}
                   <button class="ghost-btn sm" data-clear-lock="${r.id}" title="Clear lockout">Unlock</button>
                 </div>
               </td>
@@ -93,6 +135,7 @@ export function renderCodesManagement(containerId = 'codesArea') {
   `;
 
   wireCodesEvents(container);
+  if (codesLoadedFor !== course.id && !codesLoading) refreshCodes(containerId);
 }
 
 function renderEligibilityChip(r, course) {
@@ -122,6 +165,18 @@ function renderEligibilityChip(r, course) {
 }
 
 function wireCodesEvents(container) {
+  // Copy a listed code
+  container.querySelectorAll('[data-copy-code]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copyCode);
+        showStatus('Code copied ✓', false);
+      } catch (e) {
+        showStatus('Code: ' + btn.dataset.copyCode, false);
+      }
+    });
+  });
+
   // Single code generation
   container.querySelectorAll('[data-gen-code], [data-regen-code]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -140,7 +195,7 @@ function wireCodesEvents(container) {
       try {
         const res = await rpc('admin_generate_code', { p_enrollment_id: enrId });
         const student = (state.rows || []).find(r => r.id === enrId);
-        sessionCodes[enrId] = res.code;
+        activeCodes[enrId] = res.code;
         showSingleCodeModal(student, res.code);
         await reload();
       } catch (e) {
@@ -204,7 +259,7 @@ function wireCodesEvents(container) {
           if (!chunk || chunk.length === 0) break;
           totalGenerated += chunk.length;
           chunk.forEach(item => {
-            sessionCodes[item.enrollment_id] = item.code;
+            activeCodes[item.enrollment_id] = item.code;
             allGenerated.push({
               sn: item.sn,
               name: item.name,
@@ -216,7 +271,6 @@ function wireCodesEvents(container) {
           if (chunk.length < 40) break; // done
         }
 
-        generatedSlips = allGenerated;
         showStatus(`Generated ${totalGenerated} exam codes successfully.`, false);
         await reload();
         renderCodesManagement(container);
@@ -243,9 +297,8 @@ function wireCodesEvents(container) {
   const printBtn = document.getElementById('printSlipsBtn');
   if (printBtn) {
     printBtn.addEventListener('click', () => {
-      if (generatedSlips.length > 0) {
-        openCodeSlipsModal(generatedSlips);
-      }
+      const slips = currentSlips();
+      if (slips.length > 0) openCodeSlipsModal(slips);
     });
   }
 }
@@ -273,7 +326,7 @@ function showSingleCodeModal(student, code) {
           ${escapeHtml(code)}
         </div>
         <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">
-          Write down or share this code with the student. Plaintext is only shown once.
+          Share this code with the student. It stays in the list until you generate a new one.
         </p>
       </div>
 
@@ -452,7 +505,7 @@ export function openEligibilityModal() {
                 const totalPts = typeof r.total === "number" ? r.total : (r.score !== undefined ? r.score : "--");
                 const isElig = r.status === "eligible";
                 const isFinal = r.status === "finalized";
-                const code = sessionCodes[r.id];
+                const code = activeCodes[r.id];
                 return `
                   <tr style="font-size:0.85rem; border-bottom:1px solid var(--border-color);">
                     <td style="padding:6px; border:1px solid var(--border-color); text-align:center; font-weight:700;">#${r.sn}</td>

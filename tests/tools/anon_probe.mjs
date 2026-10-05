@@ -169,6 +169,24 @@ const PHASE1_CALLS = {
   if (present || process.env.PROBE_PHASE1 === '1') Object.assign(adminCalls, PHASE1_CALLS);
   record('PASS', `4. Phase 1 exam builder RPCs ${present ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE1=1 to probe them anyway)'}`);
 }
+// Phase 2 (020-023): teacher code RPCs. Same detection trick (a garbage token is refused before anything is read or changed).
+// PROBE_PHASE2=1 forces them on.
+const PHASE2_CALLS = {
+  admin_generate_code:       { p_enrollment_id: ZERO },
+  admin_generate_codes_bulk: { p_course_id: ZERO },
+  admin_revoke_code:         { p_enrollment_id: ZERO },
+  admin_clear_lock:          { p_enrollment_id: ZERO },
+  admin_reset_attempt:       { p_enrollment_id: ZERO },
+  admin_list_codes:          { p_course_id: ZERO },   // 023
+};
+const STUDENT_RPCS = ['exam_check', 'exam_start', 'exam_get_paper', 'exam_save_answers', 'exam_log_event', 'exam_submit', 'exam_get_result'];
+let phase2 = false;
+{
+  const r = await call('POST', '/rpc/admin_generate_code', { body: { p_token: 'probe-garbage', p_enrollment_id: ZERO } });
+  phase2 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE2 === '1';
+  if (phase2) Object.assign(adminCalls, PHASE2_CALLS);
+  record('PASS', `4. Phase 2 code RPCs ${phase2 ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE2=1 to probe them anyway)'}`);
+}
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_token: tok, ...args } });
@@ -206,13 +224,34 @@ for (const [fn, args] of Object.entries(adminCalls)) {
 }
 
 // ---------- 6. exam_* RPCs: Phase 2, not applicable yet ----------
-record('SKIP', '6. exam_* wrong-code probes', 'Phase 2 (no exam RPCs exist yet)');
+if (!phase2) {
+  record('SKIP', '6. exam_* wrong-code probes', 'Phase 2 is not installed');
+} else {
+  // A wrong code for an id that is not an enrollment is refused WITHOUT leaving a throttle row, so this is harmless.
+  for (const fn of ['exam_check', 'exam_start', 'exam_get_result']) {
+    const r = await call('POST', `/rpc/${fn}`, { body: { p_enrollment_id: ZERO, p_code: '000000' } });
+    if (r.status === 200 && r.json && r.json.ok === false && r.json.error === 'E_AUTH') record('PASS', `6. ${fn} with an unknown enrollment -> E_AUTH`);
+    else record('FAIL', `6. ${fn} with an unknown enrollment -> E_AUTH`, describe(r));
+  }
+  // A made-up attempt token never opens anything.
+  const tokenCalls = {
+    exam_get_paper:    { p_attempt_token: 'probe-garbage-attempt-token-0000' },
+    exam_save_answers: { p_attempt_token: 'probe-garbage-attempt-token-0000', p_answers: [] },
+    exam_log_event:    { p_attempt_token: 'probe-garbage-attempt-token-0000', p_type: 'left' },
+    exam_submit:       { p_attempt_token: 'probe-garbage-attempt-token-0000' },
+  };
+  for (const [fn, args] of Object.entries(tokenCalls)) {
+    const r = await call('POST', `/rpc/${fn}`, { body: args });
+    if (r.status === 400 && r.json && r.json.message === 'E_SESSION_REPLACED') record('PASS', `6. ${fn} with a garbage attempt token -> E_SESSION_REPLACED`);
+    else record('FAIL', `6. ${fn} with a garbage attempt token -> E_SESSION_REPLACED`, describe(r));
+  }
+}
 
 // ---------- 7. the whole exposed surface is exactly what we expect ----------
 {
   const r = await call('GET', '/');
   const expectedTables = new Set(['courses', 'students', 'enrollments', 'enrollment_results']);
-  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls)]);
+  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : [])]);
   if (r.status === 200 && r.json && r.json.paths) {
     const paths = Object.keys(r.json.paths).filter((p) => p !== '/');
     const extraTables = paths.filter((p) => !p.startsWith('/rpc/') && !expectedTables.has(p.slice(1)));

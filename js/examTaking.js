@@ -73,8 +73,8 @@ function renderExamEntry(container) {
 
       <div class="draft-field" style="margin-bottom:18px;">
         <label>Exam Code <span class="req">*</span></label>
-        <input type="text" id="examCodeInput" placeholder="XXXX-XXXX" maxlength="12" style="letter-spacing:2px; font-family:monospace; font-size:1.1rem; text-align:center; text-transform:uppercase;" value="${escapeAttr(currentSession.code || '')}">
-        <p style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">Obtained from your teacher. Format: 8 letters and numbers.</p>
+        <input type="text" id="examCodeInput" placeholder="123456" maxlength="12" inputmode="numeric" autocomplete="off" style="letter-spacing:2px; font-family:monospace; font-size:1.1rem; text-align:center; text-transform:uppercase;" value="${escapeAttr(currentSession.code || '')}">
+        <p style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">Obtained from your teacher. It is 6 digits.</p>
       </div>
 
       <div style="text-align:center;">

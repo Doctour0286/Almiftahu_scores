@@ -192,9 +192,33 @@ const writes = (db) => db.log.filter(l => l.method !== 'GET' && !l.path.startsWi
   ok(slipCards.length > 0, "code slips rendered");
   const firstEnrWithCode = db.enrollments.find(e => e.course_id === adab.id && e.active && db.codes.some(c => c.enrollment_id === e.id && c.status === "active"));
   const activeStudentCode = db.codes.find(c => c.enrollment_id === firstEnrWithCode.id && c.status === "active").code;
-  ok(activeStudentCode && activeStudentCode.length >= 8, "generated code found in db: " + activeStudentCode);
+  ok(/^[0-9]{6}$/.test(activeStudentCode), "generated code is 6 digits: " + activeStudentCode);
+  ok(slipCards.every(c => /\b[0-9]{6}\b/.test(c.textContent)), "every slip shows a 6-digit code");
   click(w, q(w, "#closeSlipsBtn"));
   ok(q(w, "#codeSlipsModal").style.display === "none", "slips modal closed");
+
+  // Codes stay visible in the list (loaded from the server) until regenerated
+  ok(await until(() => qa(w, ".exam-code-value").length === db.codes.filter(c => c.status === "active").length), "every active code is shown in the Exam Code column");
+  ok(qa(w, ".exam-code-value").some(el => el.textContent.trim() === activeStudentCode), "the generated code is listed next to its student");
+  // A real page reload (fresh window, same backend, same teacher session): the code is still listed.
+  {
+    const wr = await boot(db, w.sessionStorage.getItem('mahad_teacher_token'));
+    ok(await until(() => q(wr, '#manageTabBtn').style.display === 'flex'), 'reloaded page resumes the teacher session');
+    click(wr, q(wr, '.tab-btn[data-tab="manage"]'));
+    click(wr, q(wr, '#menuToggleCodes'));
+    ok(await until(() => qa(wr, '.exam-code-value').some(el => el.textContent.trim() === activeStudentCode)), 'after a page reload the code is still listed (read from the server)');
+    ok(!!q(wr, '#printSlipsBtn'), 'after a reload, Print Code Slips is available (slips come from the stored codes)');
+    wr.close();
+  }
+  ok(!q(w, `[data-gen-code="${firstEnrWithCode.id}"]`) && !!q(w, `[data-regen-code="${firstEnrWithCode.id}"]`), "a student with a code gets New Code, not Generate Code");
+  ok(!!q(w, "#printSlipsBtn"), "Print Code Slips is available any time codes exist");
+  click(w, q(w, `[data-regen-code="${firstEnrWithCode.id}"]`));
+  await until(() => q(w, "#confirmOverlay").style.display === "flex"); click(w, q(w, "#confirmOk"));
+  ok(await until(() => q(w, "#singleCodeModal") && q(w, "#singleCodeModal").style.display === "flex"), "regenerating shows the new code");
+  const regenCode = db.codes.find(c => c.enrollment_id === firstEnrWithCode.id && c.status === "active").code;
+  ok(regenCode !== activeStudentCode, "regenerated code differs from the old one");
+  click(w, q(w, "#doneCodeBtn"));
+  ok(await until(() => qa(w, ".exam-code-value").some(el => el.textContent.trim() === regenCode)) && !qa(w, ".exam-code-value").some(el => el.textContent.trim() === activeStudentCode), "the list now shows the new code and not the old one");
 
   click(w, q(w, "#printEligibilityListBtn"));
   ok(await until(() => q(w, "#eligibilityListModal") && q(w, "#eligibilityListModal").style.display === "flex"), "eligibility list modal opened");
@@ -210,8 +234,9 @@ const writes = (db) => db.log.filter(l => l.method !== 'GET' && !l.path.startsWi
   console.log('== student exam taking portal');
   click(w, q(w, '.tab-btn[data-tab="exam"]'));
   ok(await until(() => q(w, "#examCodeInput") && q(w, "#examCheckBtn")), "exam tab loaded with code entry input");
+  ok(q(w, "#examCodeInput").getAttribute("inputmode") === "numeric" && q(w, "#examCodeInput").placeholder === "123456", "code box expects 6 digits on a numeric keypad");
   q(w, "#examStudentSelect").value = firstEnrWithCode.id;
-  q(w, "#examCodeInput").value = activeStudentCode;
+  q(w, "#examCodeInput").value = regenCode;
   click(w, q(w, "#examCheckBtn"));
   ok(await until(() => q(w, "#startExamBtn")), "code verified and start exam button displayed");
   click(w, q(w, "#startExamBtn"));

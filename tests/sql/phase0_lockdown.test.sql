@@ -32,8 +32,10 @@ begin
   assert exists (select 1 from private.secrets where key = 'teacher_pin_hash'), 'the hash is kept';
   assert (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
           where p.prokind = 'f' and has_function_privilege('anon', p.oid, 'EXECUTE'))
-         = 16 + case when to_regprocedure('public.admin_get_exam(text,uuid)') is not null then 7 else 0 end,
-         'anon executes exactly the 16 Phase-0 RPCs (+7 exam builder RPCs once 011 is applied)';
+         = 16 + case when to_regprocedure('public.admin_get_exam(text,uuid)') is not null then 7 else 0 end
+              + case when to_regprocedure('public.admin_generate_code(text,uuid)') is not null then 12 else 0 end   -- 021 (5 teacher) + 022 (7 student)
+              + case when to_regprocedure('public.admin_list_codes(text,uuid)') is not null then 1 else 0 end,     -- 023
+         'anon executes exactly the 16 Phase-0 RPCs (+7 exam builder once 011 is applied, +12 code/exam RPCs once 021/022 are applied, +1 admin_list_codes once 023 is applied)';
   assert not has_schema_privilege('anon', 'private', 'USAGE'), 'no anon usage on private';
 end $$;
 
