@@ -5,17 +5,15 @@ Pinned third-party code (PRD §10.7, D-39). Nothing here is loaded from a CDN at
 | File | What | License |
 |---|---|---|
 | `supabase-js-2.117.2.esm.js` | `@supabase/supabase-js` **2.117.2**, bundled with esbuild into one minified ES module that exports `createClient` | MIT |
+| `qrcode.esm.js` | `qrcode` **1.5.4**, bundled with esbuild into one minified ES module that exports `createQrSvg` and `createQrDataUrl` (zero network calls, pure SVG/data-url generation) | MIT |
 
 ## Rebuilding / upgrading
-
 Do this deliberately, never as a side effect. In a scratch directory (not the repo):
 
 ```
 npm install @supabase/supabase-js@<exact version> esbuild
 ```
-
 then bundle:
-
 ```js
 import { build } from 'esbuild';
 await build({
@@ -27,4 +25,29 @@ await build({
 });
 ```
 
-Update the import in `js/api.js`, delete the old file, and re-run the staging regression.
+For QR codes:
+```
+npm install qrcode@1.5.4 esbuild
+```
+then bundle:
+```js
+import { build } from 'esbuild';
+await build({
+  stdin: {
+    contents: `
+import QRCode from "qrcode";
+export async function createQrSvg(text, options = {}) {
+  return QRCode.toString(text, { type: "svg", margin: 1, ...options });
+}
+export async function createQrDataUrl(text, options = {}) {
+  return QRCode.toDataURL(text, { margin: 1, ...options });
+}
+`,
+    resolveDir: process.cwd(),
+  },
+  bundle: true, format: 'esm', platform: 'browser', target: 'es2020', minify: true,
+  outfile: '<repo>/vendor/qrcode.esm.js',
+  banner: { js: '/* qrcode 1.5.4 (MIT), bundled with esbuild as a single ES module. Do not edit; see vendor/README.md */' },
+  legalComments: 'none',
+});
+```

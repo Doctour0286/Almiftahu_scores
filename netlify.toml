@@ -1,0 +1,2 @@
+[build]
+  publish = "."  # no build command: static files only

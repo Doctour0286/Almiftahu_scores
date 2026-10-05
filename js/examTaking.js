@@ -5,6 +5,7 @@
 import { rpc, errorMessage } from './api.js';
 import { currentCourse, state } from './state.js';
 import { arHtml, escapeAttr, escapeHtml, fmtNum, setHint, showStatus } from './ui.js';
+import { showCertificateModal } from './certificateView.js';
 
 let currentSession = {
   enrollmentId: null,
@@ -849,6 +850,12 @@ async function renderStudentResult(container, initialRes) {
 
       <!-- Action Buttons -->
       <div style="display:flex; flex-direction:column; gap:10px; align-items:center; margin-top:20px;">
+        ${isFinalized && res.passed ? `
+          <button class="save-btn" id="viewStudentCertBtn" type="button" style="width:100%; max-width:280px; justify-content:center; background:linear-gradient(135deg, #065f46 0%, #047857 100%);">
+            🎓 View &amp; Print Certificate
+          </button>
+          <div class="save-hint" id="certStudentHint" style="margin-top:2px;"></div>
+        ` : ''}
         ${canReview ? `
           <button class="save-btn" id="startReviewBtn" style="width:100%; max-width:280px; justify-content:center;">
             Review Questions &amp; Answers &rarr;
@@ -860,6 +867,33 @@ async function renderStudentResult(container, initialRes) {
       </div>
     </div>
   `;
+
+  
+  const certBtn = document.getElementById("viewStudentCertBtn");
+  if (certBtn) {
+    certBtn.addEventListener("click", async () => {
+      const hint = document.getElementById("certStudentHint");
+      setHint(hint, "Loading certificate…");
+      try {
+        const certRes = await rpc("get_certificate", {
+          p_enrollment_id: enrId,
+          p_code: code,
+        });
+        if (certRes && certRes.snapshot) {
+          setHint(hint, "");
+          showCertificateModal(certRes.snapshot);
+        } else {
+          setHint(hint, "Certificate not available.", "err");
+        }
+      } catch (e) {
+        if (e.code === "E_NO_CERTIFICATE") {
+          setHint(hint, "Certificate pending approval by teacher.", "err");
+        } else {
+          setHint(hint, errorMessage(e), "err");
+        }
+      }
+    });
+  }
 
   if (canReview) {
     document.getElementById('startReviewBtn')?.addEventListener('click', () => {

@@ -369,6 +369,181 @@ function makeBackend() {
       if (!p_confirm) throw new Fail("E_CONFIRM_REQUIRED");
       return { ok: true, affected_attempts: 1 };
     },
+    
+    admin_list_certificates: ({ p_token, p_course_id }) => {
+      auth(p_token);
+      return {
+        ok: true,
+        eligible: [
+          {
+            enrollment_id: "enr-1",
+            student_id: "st-1",
+            sn: 1,
+            student_name: "Ahmad Bello",
+            student_name_ar: "أحمد بللو",
+            missing_arabic_name: false,
+            final: 85,
+            band_label: "Very Good",
+            band_label_ar: "جيد جداً",
+            finalized_at: "2026-10-05T13:00:00Z"
+          },
+          {
+            enrollment_id: "enr-2",
+            student_id: "st-2",
+            sn: 2,
+            student_name: "John Doe",
+            student_name_ar: "",
+            missing_arabic_name: true,
+            final: 75,
+            band_label: "Good",
+            band_label_ar: "جيد",
+            finalized_at: "2026-10-05T13:00:00Z"
+          }
+        ],
+        issued: [
+          {
+            id: "cert-1",
+            enrollment_id: "enr-prev",
+            sn: 99,
+            student_name: "Previous Grad",
+            student_name_ar: "خريج سابق",
+            number: "MMI-ADAB-2026-0001",
+            verify_code: "ABC123XYZ0",
+            status: "approved",
+            approved_at: "2026-10-05T10:00:00Z",
+            revoked_at: null,
+            revoke_reason: null,
+            final: 92,
+            band_label: "Excellent",
+            band_label_ar: "ممتاز",
+            snapshot: {
+              number: "MMI-ADAB-2026-0001",
+              student_name: "Previous Grad",
+              student_name_ar: "خريج سابق",
+              course_name: "Al-Aadaab",
+              course_name_ar: "الآداب",
+              final: 92,
+              band_label: "Excellent",
+              band_label_ar: "ممتاز",
+              issued_date: "2026-10-05",
+              title: "Certificate of Completion",
+              title_ar: "شهادة إتمام",
+              institution_name: "Ma'had Miftah al-'Ilm",
+              institution_name_ar: "معهد مفتاح العلم",
+              wording: "Completed course successfully.",
+              wording_ar: "أتم الدورة بنجاح.",
+              signatory: {
+                name: "Musa Aminu Muhammad",
+                name_ar: "موسى أمينو محمد",
+                title: "Mushrif",
+                title_ar: "المشرف"
+              }
+            }
+          }
+        ]
+      };
+    },
+    admin_approve_certificates: ({ p_token, p_enrollment_ids }) => {
+      auth(p_token);
+      return (p_enrollment_ids || []).map((id, i) => ({
+        enrollment_id: id,
+        ok: true,
+        number: `MMI-ADAB-2026-000${i + 2}`,
+        verify_code: `VCODE000${i + 2}`,
+      }));
+    },
+    admin_revoke_certificate: ({ p_token, p_enrollment_id, p_reason }) => {
+      auth(p_token);
+      return { ok: true };
+    },
+    admin_get_institution: ({ p_token }) => {
+      auth(p_token);
+      return {
+        ok: true,
+        number_prefix: "MMI",
+        institution: {
+          name: "Ma'had Miftah al-'Ilm",
+          name_ar: "معهد مفتاح العلم"
+        },
+        certificate_defaults: {
+          title: "Certificate of Completion",
+          title_ar: "شهادة إتمام",
+          wording: "This is to certify that {name} has completed {course}.",
+          wording_ar: "يشهد معهد مفتاح العلم بأن {name_ar} قد أتم {course_ar}.",
+          signatory: {
+            name: "Musa Aminu Muhammad",
+            name_ar: "موسى أمينو محمد",
+            title: "Mushrif",
+            title_ar: "المشرف"
+          }
+        }
+      };
+    },
+    admin_save_institution: ({ p_token, p_settings }) => {
+      auth(p_token);
+      return { ok: true };
+    },
+    get_certificate: ({ p_enrollment_id, p_code }) => {
+      return {
+        ok: true,
+        number: "MMI-ADAB-2026-0001",
+        verify_code: "ABC123XYZ0",
+        approved_at: "2026-10-05T10:00:00Z",
+        snapshot: {
+          number: "MMI-ADAB-2026-0001",
+          student_name: "Ahmad Bello",
+          student_name_ar: "أحمد بللو",
+          course_name: "Al-Aadaab",
+          course_name_ar: "الآداب",
+          final: 85,
+          band_label: "Very Good",
+          band_label_ar: "جيد جداً",
+          issued_date: "2026-10-05",
+          title: "Certificate of Completion",
+          title_ar: "شهادة إتمام",
+          institution_name: "Ma'had Miftah al-'Ilm",
+          institution_name_ar: "معهد مفتاح العلم",
+          wording: "Completed course successfully.",
+          wording_ar: "أتم الدورة بنجاح.",
+          signatory: {
+            name: "Musa Aminu Muhammad",
+            name_ar: "موسى أمينو محمد",
+            title: "Mushrif",
+            title_ar: "المشرف"
+          }
+        }
+      };
+    },
+    verify_certificate: ({ p_number }) => {
+      if (p_number === "MMI-REVOKED-2026-0000") {
+        return {
+          ok: true,
+          status: "revoked",
+          number: p_number,
+          revoked_at: "2026-10-05T12:00:00Z",
+          revoke_reason: "Test revocation"
+        };
+      }
+      if (p_number === "MMI-NONEXISTENT") {
+        return { ok: true, status: "not_found" };
+      }
+      return {
+        ok: true,
+        status: "valid",
+        number: p_number || "MMI-ADAB-2026-0001",
+        student_name: "Ahmad Bello",
+        student_name_ar: "أحمد بللو",
+        course_name: "Al-Aadaab",
+        course_name_ar: "الآداب",
+        issued_date: "2026-10-05",
+        band_label: "Very Good",
+        band_label_ar: "جيد جداً",
+        title: "Certificate of Completion",
+        title_ar: "شهادة إتمام",
+        institution_name: "Ma'had Miftah al-'Ilm",
+        institution_name_ar: "معهد مفتاح العلم"
+      };
+    },
     admin_results: ({ p_token, p_course_id }) => {
       auth(p_token);
       return [

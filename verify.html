@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate Verification — Ma'had Miftah al-'Ilm</title>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/print.css" media="print">
+  <style>
+    .verify-container {
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 24px;
+    }
+    .verify-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 32px 28px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+    .verify-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+    .verify-badge.valid {
+      background: rgba(6, 95, 70, 0.12);
+      color: #065f46;
+      border: 1.5px solid #065f46;
+    }
+    .verify-badge.revoked {
+      background: rgba(220, 38, 38, 0.12);
+      color: #dc2626;
+      border: 1.5px solid #dc2626;
+    }
+    .verify-badge.not-found {
+      background: rgba(217, 119, 6, 0.12);
+      color: #d97706;
+      border: 1.5px solid #d97706;
+    }
+    .cert-prop-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-top: 20px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 20px;
+    }
+    .cert-prop-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .cert-prop-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .cert-prop-value {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+    .verify-search-box {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .verify-search-box input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
+    <h1>معهد مفتاح العلم</h1>
+    <h2>Ma'had Miftah al-'Ilm &bull; Certificate Verification Service</h2>
+  </header>
+
+  <div class="container verify-container">
+    <div class="verify-card" id="verifyCard">
+      <div id="verifyLoading" style="text-align:center; padding:30px; color:var(--text-muted);">
+        Verifying certificate…
+      </div>
+      <div id="verifyResult" style="display:none;"></div>
+      
+      <div class="verify-search-wrap" style="margin-top:28px; border-top:1px solid var(--border-color); padding-top:20px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--text-muted); margin-bottom:8px;">
+          Verify another certificate
+        </div>
+        <form id="verifyForm" class="verify-search-box">
+          <input type="text" id="certInput" placeholder="e.g. MMI-ADAB-2026-0001" required autocomplete="off" autocapitalize="characters">
+          <button class="save-btn" type="submit">Verify</button>
+        </form>
+      </div>
+
+      <div style="margin-top:20px; text-align:center;">
+        <a href="/" style="font-size:0.85rem; color:var(--emerald); text-decoration:none; font-weight:600;">
+          &larr; Return to Score Portal
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from './vendor/supabase-js-2.117.2.esm.js';
+    import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js';
+    import { escapeHtml } from './js/ui.js';
+
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function getCertNumber() {
+      // 1. From path: /verify/MMI-ADAB-2026-0001
+      const pathParts = window.location.pathname.split('/');
+      const idx = pathParts.indexOf('verify');
+      if (idx !== -1 && pathParts[idx + 1]) {
+        return decodeURIComponent(pathParts[idx + 1].trim());
+      }
+      // 2. From query param: ?number=MMI-ADAB-2026-0001
+      const params = new URLSearchParams(window.location.search);
+      return (params.get('number') || '').trim();
+    }
+
+    async function checkCertificate(number) {
+      const loading = document.getElementById('verifyLoading');
+      const resultDiv = document.getElementById('verifyResult');
+      loading.style.display = 'block';
+      resultDiv.style.display = 'none';
+
+      if (!number) {
+        loading.style.display = 'none';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+          <div style="text-align:center; padding:10px 0;">
+            <p style="color:var(--text-muted); font-size:0.95rem;">Enter a certificate number below to verify its authenticity.</p>
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const { data, error } = await sb.rpc('verify_certificate', { p_number: number });
+        loading.style.display = 'none';
+        resultDiv.style.display = 'block';
+
+        if (error) {
+          resultDiv.innerHTML = `
+            <div class="verify-badge not-found">Verification Error</div>
+            <p style="color:var(--danger); font-size:0.9rem;">Could not verify certificate: ${escapeHtml(error.message)}</p>
+          `;
+          return;
+        }
+
+        if (data.status === 'valid') {
+          resultDiv.innerHTML = `
+            <div style="text-align:center;">
+              <div class="verify-badge valid">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Verified Official Certificate &bull; شهادة معتمدة
+              </div>
+            </div>
+            <div class="cert-prop-grid">
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Certificate Number</span>
+                <span class="cert-prop-value" style="font-family:monospace; color:#065f46; font-size:1.15rem;">${escapeHtml(data.number)}</span>
+              </div>
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Recipient Name / اسم الطالب</span>
+                <span class="cert-prop-value" style="font-family:'Amiri', serif; font-size:1.3rem; color:#065f46;">${escapeHtml(data.student_name_ar || '')}</span>
+                <span style="font-size:0.95rem; color:#444;">${escapeHtml(data.student_name || '')}</span>
+              </div>
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Course / الدورة</span>
+                <span class="cert-prop-value" style="font-family:'Amiri', serif; font-size:1.15rem;">${escapeHtml(data.course_name_ar || '')}</span>
+                <span style="font-size:0.95rem; color:#444;">${escapeHtml(data.course_name || '')}</span>
+              </div>
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Grade Band / التقدير</span>
+                <span class="cert-prop-value" style="color:#855d14;">
+                  ${escapeHtml(data.band_label || '')} ${data.band_label_ar ? `(${escapeHtml(data.band_label_ar)})` : ''}
+                </span>
+              </div>
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Date Issued / تاريخ الإصدار</span>
+                <span class="cert-prop-value" style="font-family:monospace; font-size:0.95rem;">${escapeHtml(data.issued_date || '')}</span>
+              </div>
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Issuing Institution / الجهة المصدرة</span>
+                <span class="cert-prop-value" style="font-size:0.95rem;">${escapeHtml(data.institution_name_ar || '')} &bull; ${escapeHtml(data.institution_name || '')}</span>
+              </div>
+            </div>
+            <p style="margin-top:20px; font-size:0.78rem; color:var(--text-muted); text-align:center; line-height:1.4;">
+              This record is authenticated directly from the central database of Ma'had Miftah al-'Ilm.
+            </p>
+          `;
+        } else if (data.status === 'revoked') {
+          resultDiv.innerHTML = `
+            <div style="text-align:center;">
+              <div class="verify-badge revoked">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                Certificate Revoked &bull; شهادة ملغاة
+              </div>
+            </div>
+            <div class="cert-prop-grid">
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Certificate Number</span>
+                <span class="cert-prop-value" style="font-family:monospace; color:#dc2626;">${escapeHtml(data.number)}</span>
+              </div>
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Status</span>
+                <span class="cert-prop-value" style="color:#dc2626;">REVOKED</span>
+              </div>
+              ${data.revoke_reason ? `
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Reason for Revocation</span>
+                <span class="cert-prop-value" style="font-size:0.95rem; color:#444;">${escapeHtml(data.revoke_reason)}</span>
+              </div>` : ''}
+              ${data.revoked_at ? `
+              <div class="cert-prop-item">
+                <span class="cert-prop-label">Revocation Date</span>
+                <span class="cert-prop-value" style="font-family:monospace; font-size:0.95rem;">${escapeHtml(data.revoked_at.slice(0, 10))}</span>
+              </div>` : ''}
+            </div>
+            <p style="margin-top:20px; font-size:0.8rem; color:#dc2626; text-align:center;">
+              This certificate has been officially withdrawn and revoked by the institution administration.
+            </p>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div style="text-align:center;">
+              <div class="verify-badge not-found">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Certificate Not Found &bull; لم يتم العثور على الشهادة
+              </div>
+            </div>
+            <p style="text-align:center; color:var(--text-muted); margin-top:14px; font-size:0.95rem;">
+              No record was found for certificate number <b>${escapeHtml(number)}</b>. Please ensure the code was entered accurately.
+            </p>
+          `;
+        }
+      } catch (err) {
+        loading.style.display = 'none';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+          <div class="verify-badge not-found">Network Error</div>
+          <p style="color:var(--danger); font-size:0.9rem;">Could not connect to verification service. Please check your internet connection.</p>
+        `;
+      }
+    }
+
+    const initialNumber = getCertNumber();
+    if (initialNumber) {
+      document.getElementById('certInput').value = initialNumber;
+    }
+    checkCertificate(initialNumber);
+
+    document.getElementById('verifyForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const num = document.getElementById('certInput').value.trim();
+      if (num) {
+        history.pushState(null, '', `?number=${encodeURIComponent(num)}`);
+        checkCertificate(num);
+      }
+    });
+  </script>
+</body>
+</html>

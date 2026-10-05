@@ -4,6 +4,7 @@
 -- ---------------------------------------------------------------------------------------------
 -- 1. Certificate tables in private schema
 -- ---------------------------------------------------------------------------------------------
+
 create table if not exists private.certificates (
   id uuid primary key default gen_random_uuid(),
   enrollment_id uuid not null unique references public.enrollments(id) on delete restrict,
@@ -15,6 +16,24 @@ create table if not exists private.certificates (
   revoke_reason text,
   snapshot jsonb not null
 );
+
+-- Ensure all columns exist even if private.certificates was previously stubbed (e.g. by hotfix)
+alter table private.certificates add column if not exists number text;
+alter table private.certificates add column if not exists verify_code text;
+alter table private.certificates add column if not exists approved_at timestamptz not null default now();
+alter table private.certificates add column if not exists revoked_at timestamptz;
+alter table private.certificates add column if not exists revoke_reason text;
+alter table private.certificates add column if not exists snapshot jsonb;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'certificates_number_key') then
+    alter table private.certificates add constraint certificates_number_key unique (number);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'certificates_enrollment_id_key') then
+    alter table private.certificates add constraint certificates_enrollment_id_key unique (enrollment_id);
+  end if;
+end $$;
 
 create table if not exists private.certificate_counters (
   course_id uuid not null references public.courses(id) on delete cascade,
@@ -32,6 +51,7 @@ revoke all on private.certificate_counters from public, anon, authenticated;
 -- ---------------------------------------------------------------------------------------------
 -- 2. Simplified recompute_result (drop dynamic to_regclass guard)
 -- ---------------------------------------------------------------------------------------------
+
 create or replace function private.recompute_result(p_enrollment uuid) returns void
 language plpgsql security definer set search_path = public, private, extensions as $$
 declare
@@ -68,7 +88,6 @@ begin
   end;
 
   select * into v_att from private.attempts where enrollment_id = p_enrollment and not superseded;
-
   if found and v_att.status = 'finalized' then
     v_exam := private.attempt_exam_pct(v_att.id);
     v_final := coalesce(v_lesson_pct,0) * c.weight_lessons / 100 + v_exam * c.weight_exam / 100;
@@ -105,9 +124,14 @@ end $$;
 -- ---------------------------------------------------------------------------------------------
 -- 3. Post-conditions
 -- ---------------------------------------------------------------------------------------------
+
 do $$
 begin
   assert to_regclass('private.certificates') is not null, 'private.certificates table missing';
   assert to_regclass('private.certificate_counters') is not null, 'private.certificate_counters table missing';
+  assert exists (
+    select 1 from information_schema.columns 
+    where table_schema = 'private' and table_name = 'certificates' and column_name = 'number'
+  ), 'private.certificates.number column missing';
   raise notice '040_certificates applied and verified.';
 end $$;

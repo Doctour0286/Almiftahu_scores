@@ -10,7 +10,7 @@ async function boot(db, token) {
   let html = fs.readFileSync(REPO + '/index.html', 'utf8').replace(/<script type="module"[^>]*><\/script>/, '').replace(/<link[^>]*>/g, '');
   const dom = new JSDOM(html, { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
-  w.fetch = (i, o) => db.fetch(i, o); w.Headers = Headers; w.Request = Request; w.Response = Response;
+  w.fetch = (i, o) => db.fetch(i, o); w.Headers = Headers; w.Request = Request; w.Response = Response; w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder;
   w.WebSocket = class { constructor() { setTimeout(() => this.onerror && this.onerror(new Error('no ws')), 0); } close() {} send() {} addEventListener() {} removeEventListener() {} };
   if (token) w.sessionStorage.setItem('mahad_teacher_token', token);
   w.eval(out);
@@ -296,6 +296,35 @@ const writes = (db) => db.log.filter(l => l.method !== 'GET' && !l.path.startsWi
   ok(qa(w, ".modal-q-item").length > 0, "questions and scores shown in inspection modal");
   click(w, q(w, "#detailModalCloseBtn"));
   ok(!q(w, "#detailModalOverlay"), "attempt detail modal closed");
+
+  
+  console.log("== certificates & institution settings");
+  click(w, q(w, "#menuToggleCert"));
+  ok(await until(() => q(w, "#certTabEligible")), "certificates tab rendered");
+  ok(await until(() => qa(w, "#certTabBody table tbody tr").length > 0), "eligible students table rendered");
+  ok(q(w, "[data-goto-ar]"), "missing Arabic name flagged for student without Arabic name");
+  const singleApprove = q(w, ".approve-single-btn:not(:disabled)");
+  ok(singleApprove, "single approve button enabled for student with Arabic name");
+  click(w, singleApprove);
+  ok(await until(() => db.log.some(l => l.path.endsWith("/admin_approve_certificates"))), "admin_approve_certificates called on approval");
+
+  click(w, q(w, "#certTabIssued"));
+  ok(await until(() => qa(w, "#certTabBody .view-cert-btn").length > 0), "issued certificates rendered");
+  const viewBtn = q(w, ".view-cert-btn");
+  click(w, viewBtn);
+  ok(await until(() => q(w, "#certificatePrintArea")), "certificate preview modal opened with A4 sheet");
+  ok(q(w, "#certPrintBtn"), "print button present");
+  click(w, q(w, "#certCloseBtn"));
+  ok(!q(w, "#certificateModal").classList.contains("open"), "certificate modal closed");
+  const revokeBtn = q(w, ".revoke-cert-btn");
+  ok(revokeBtn, "revoke button present for approved certificate");
+
+  click(w, q(w, "#menuToggleInst"));
+  ok(await until(() => q(w, "#saveInstBtn")), "institution settings form rendered");
+  ok(q(w, "#instPrefix") && q(w, "#instName"), "prefix and name inputs present");
+  q(w, "#instPrefix").value = "MMI";
+  click(w, q(w, "#saveInstBtn"));
+  ok(await until(() => db.log.some(l => l.path.endsWith("/admin_save_institution"))), "admin_save_institution called on save");
 
   console.log('== session expiry, logout, reload');
   db.tokens.clear();
