@@ -179,6 +179,16 @@ const PHASE2_CALLS = {
   admin_reset_attempt:       { p_enrollment_id: ZERO },
   admin_list_codes:          { p_course_id: ZERO },   // 023
 };
+const PHASE3_CALLS = {
+  admin_marking_overview:    { p_course_id: ZERO },
+  admin_essay_answers:       { p_question_id: ZERO },
+  admin_attempt_detail:      { p_attempt_id: ZERO },
+  admin_mark_answer:         { p_attempt_id: ZERO, p_question_id: ZERO, p_points: 0, p_comment: null },
+  admin_fill_review:         { p_question_id: ZERO },
+  admin_accept_fill_answer:  { p_question_id: ZERO, p_text: "sample" },
+  admin_correct_key:         { p_question_id: ZERO, p_new_key: {}, p_confirm: false },
+  admin_results:             { p_course_id: ZERO },
+};
 const STUDENT_RPCS = ['exam_check', 'exam_start', 'exam_get_paper', 'exam_save_answers', 'exam_log_event', 'exam_submit', 'exam_get_result'];
 let phase2 = false;
 {
@@ -186,6 +196,13 @@ let phase2 = false;
   phase2 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE2 === '1';
   if (phase2) Object.assign(adminCalls, PHASE2_CALLS);
   record('PASS', `4. Phase 2 code RPCs ${phase2 ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE2=1 to probe them anyway)'}`);
+}
+let phase3 = false;
+{
+  const r = await call('POST', '/rpc/admin_marking_overview', { body: { p_token: 'probe-garbage', p_course_id: ZERO } });
+  phase3 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE3 === '1';
+  if (phase3) Object.assign(adminCalls, PHASE3_CALLS);
+  record('PASS', `4. Phase 3 marking RPCs ${phase3 ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE3=1 to probe them anyway)'}`);
 }
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
