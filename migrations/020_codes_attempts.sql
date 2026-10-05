@@ -44,6 +44,14 @@ create table if not exists private.answers (
   primary key (attempt_id, question_id)
 );
 
+create table if not exists private.certificates (
+  id uuid primary key default gen_random_uuid(),
+  enrollment_id uuid not null references public.enrollments(id) on delete restrict,
+  status text not null default 'approved' check (status in ('approved','revoked')),
+  created_at timestamptz not null default now()
+);
+alter table private.certificates enable row level security;
+
 create table if not exists private.attempt_events (
   id bigint generated always as identity primary key,
   attempt_id uuid not null references private.attempts(id) on delete cascade,
@@ -213,8 +221,12 @@ begin
     v_status := 'not_eligible';
   end if;
 
-  v_cert := to_regclass('private.certificates') is not null
-            and exists (select 1 from private.certificates where enrollment_id = p_enrollment and status = 'approved');
+  if to_regclass('private.certificates') is not null then
+    execute 'select exists (select 1 from private.certificates where enrollment_id = $1 and status = ''approved'')'
+      into v_cert using p_enrollment;
+  else
+    v_cert := false;
+  end if;
 
   insert into public.enrollment_results as r
     (enrollment_id, course_id, status, lesson_pct, exam_pct, final, passed, band_label, band_label_ar, has_certificate, updated_at)
