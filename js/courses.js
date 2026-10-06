@@ -6,7 +6,7 @@ import { rpc, errorMessage } from './api.js';
 import { chooseCourse } from './data.js';
 import { reload } from './main.js';
 import { currentCourse, state } from './state.js';
-import { confirmDialog, escapeAttr, escapeHtml, setHint } from './ui.js';
+import { confirmDialog, escapeAttr, escapeHtml, setHint, renderImageUploadField, bindImageUpload } from './ui.js';
 
 // Built-in defaults for a blank course (D-40).
 const BLANK = {
@@ -164,8 +164,8 @@ function paint(host, v, creating) {
         ${txt('cfCertSigTitleAr', 'Signatory title (AR)', sig.title_ar || '', 'dir="auto"')}
       </div>
 
-      ${txt('cfCertLogo', 'Logo path (e.g. assets/logo.png)', cs.logo || '')}
-      ${txt('cfCertSigImg', 'Signature image (e.g. assets/sig.png)', cs.signature_image || '')}
+      ${renderImageUploadField({ id: "cfCertLogo", label: "Course Logo Override (Optional)", value: cs.logo || "", hint: "Upload an image if this course uses a different logo than institution default." })}
+      ${renderImageUploadField({ id: "cfCertSigImg", label: "Course Signatory Signature (Optional)", value: cs.signature_image || "", hint: "Upload an official signature image for this course." })}
     </div>
 
     <div class="entry-footer">
@@ -186,6 +186,8 @@ function paint(host, v, creating) {
       state.courseFormDirty = true;
     });
   }
+  bindImageUpload('cfCertLogo', () => { state.courseFormDirty = true; });
+  bindImageUpload('cfCertSigImg', () => { state.courseFormDirty = true; });
 
   document.getElementById('cfMode').addEventListener('change', () => {
     const next = readForm();
@@ -295,12 +297,12 @@ function clientCheck(v, creating) {
       return 'All four signatory fields (EN/AR name and EN/AR title) are required when overriding the signatory.';
     }
   }
-  const imgRegex = /^assets\/[A-Za-z0-9._-]+\.(png|svg|jpe?g|webp)$/;
+  const imgRegex = /^(assets\/[A-Za-z0-9._-]+\.(png|svg|jpe?g|webp)|data:image\/[a-zA-Z0-9+.-]+;base64,.+)$/;
   if (cs.logo && !imgRegex.test(cs.logo)) {
-    return 'Logo path must match assets/<filename> (png, svg, jpg, webp).';
+    return 'Logo must be an uploaded image (PNG, JPG, SVG, WebP) or valid asset path.';
   }
   if (cs.signature_image && !imgRegex.test(cs.signature_image)) {
-    return 'Signature image path must match assets/<filename> (png, svg, jpg, webp).';
+    return 'Signature must be an uploaded image (PNG, JPG, SVG, WebP) or valid asset path.';
   }
   return '';
 }

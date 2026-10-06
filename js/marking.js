@@ -3,7 +3,7 @@
 
 import { rpc, errorMessage } from './api.js';
 import { currentCourse } from './state.js';
-import { arHtml, escapeAttr, escapeHtml, setHint, showStatus } from './ui.js';
+import { arHtml, escapeAttr, escapeHtml, setHint, showStatus, formatQuestionResponse, formatQuestionKey, questionStatusBadge } from './ui.js';
 
 let markingState = {
   view: 'overview',        // 'overview' | 'by_question' | 'by_student' | 'fill_review'
@@ -426,7 +426,7 @@ function renderByStudentView(container) {
               ${escapeHtml(att.student_name)} ${att.student_name_ar ? `<span dir="rtl" style="font-family:'Amiri',serif;">(${escapeHtml(att.student_name_ar)})</span>` : ''}
             </h3>
             <div style="font-size:0.82rem; color:var(--text-muted);">
-              S/N: <b>${att.sn}</b> • Attempt ID: <span style="font-family:monospace; font-size:0.75rem;">${att.id.slice(0, 8)}…</span>
+              Student S/N: <b>${att.sn}</b>
             </div>
           </div>
           <div style="font-size:0.82rem; color:var(--text-muted); text-align:right;">
@@ -449,22 +449,28 @@ function renderByStudentView(container) {
               const isEssay = sec.format === 'essay';
               return `
                 <div class="student-q-item" style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:8px; padding:16px; margin-bottom:14px;" data-q-id="${escapeAttr(q.id)}">
-                  <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:6px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--text-muted); margin-bottom:6px;">
                     <span>Question ${qIdx + 1} (${sec.format.toUpperCase()})</span>
-                    <span>Max Value: <b>${q.value} pts</b></span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      ${questionStatusBadge(q)}
+                      <span>Max Value: <b>${q.value != null ? q.value : (q.max_points || 0)} pts</b></span>
+                    </div>
                   </div>
 
                   <div dir="auto" style="font-weight:600; font-size:0.95rem; margin-bottom:10px; color:var(--text-dark);">
                     ${escapeHtml(q.prompt)}
                   </div>
 
-                  <!-- Student Answer Display -->
-                  <div style="background:var(--bg-warm); border:1px solid var(--border-color); border-radius:6px; padding:10px; margin-bottom:12px;">
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Student Response:</div>
-                    <div dir="auto" style="font-size:0.92rem; white-space:pre-wrap;">
-                      ${isEssay ? escapeHtml(ansText || '(No text submitted)') : `<code>${escapeHtml(JSON.stringify(q.response || {}))}</code>`}
+                  <!-- Student Answer Display (human-readable) -->
+                  <div style="background:var(--bg-warm); border:1px solid var(--border-color); border-radius:6px; padding:10px 12px; margin-bottom:10px;">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; font-weight:600;">Student Response:</div>
+                    <div>
+                      ${formatQuestionResponse(q)}
                     </div>
                   </div>
+
+                  <!-- Correct key if auto -->
+                  ${q.key ? formatQuestionKey(q) : ""}
 
                   <!-- Mark Input -->
                   <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; border-top:1px solid var(--border-color); padding-top:10px;">

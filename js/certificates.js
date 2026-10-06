@@ -2,7 +2,7 @@
 import { rpc, errorMessage } from './api.js';
 import { currentCourse } from './state.js';
 import { showCertificateModal } from './certificateView.js';
-import { escapeHtml, escapeAttr, setHint, confirmDialog } from './ui.js';
+import { escapeHtml, escapeAttr, setHint, confirmDialog, renderImageUploadField, bindImageUpload } from './ui.js';
 import { reload } from './main.js';
 
 let certState = {
@@ -413,7 +413,7 @@ export async function renderInstitutionSettings(containerId = 'institutionSettin
           <input type="text" id="instPrefix" maxlength="8" style="text-transform:uppercase; font-family:monospace;" value="${escapeAttr(pfx)}">
         </div>
         <p style="font-size:0.75rem; color:var(--text-muted); margin:-4px 0 14px;">
-          2 to 8 uppercase alphanumeric characters (e.g. MMI). Produces numbers like <code>MMI-ADAB-2026-0001</code>.
+          2 to 8 uppercase alphanumeric characters (e.g. <b>MMI</b>). Used to format certificates like <b>MMI-ADAB-2026-0001</b>.
         </p>
 
         <div style="font-size:0.85rem; font-weight:700; color:var(--emerald); margin:16px 0 8px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">
@@ -439,9 +439,19 @@ export async function renderInstitutionSettings(containerId = 'institutionSettin
           <label for="instWordingAr" style="margin-bottom:4px;">Default Arabic Wording</label>
           <textarea id="instWordingAr" maxlength="600" dir="auto" style="width:100%; min-height:70px; font-size:0.95rem; font-family:'Amiri', serif; padding:8px; border:1.5px solid var(--border-color); border-radius:6px; box-sizing:border-box;">${escapeHtml(defs.wording_ar || "يشهد معهد مفتاح العلم بأن {name_ar} قد أتمّ بنجاح دورة {course_ar} بدرجة نهائية قدرها {score}٪ وتقدير {band_ar}.")}</textarea>
         </div>
-        <p style="font-size:0.75rem; color:var(--text-muted); margin:-4px 0 14px;">
-          Placeholders: <code>{name}</code>, <code>{name_ar}</code>, <code>{course}</code>, <code>{course_ar}</code>, <code>{score}</code>, <code>{band}</code>, <code>{band_ar}</code>, <code>{date}</code>.
-        </p>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin:-4px 0 14px; line-height:1.6;">
+          <span style="font-weight:600;">Supported placeholders:</span>
+          <span style="display:inline-flex; gap:4px; flex-wrap:wrap; margin-top:2px;">
+            <span style="background:rgba(6,95,70,0.08); color:var(--emerald-dark); font-weight:600; padding:1px 6px; border-radius:4px;">{name}</span>
+            <span style="background:rgba(6,95,70,0.08); color:var(--emerald-dark); font-weight:600; padding:1px 6px; border-radius:4px;">{name_ar}</span>
+            <span style="background:rgba(6,95,70,0.08); color:var(--emerald-dark); font-weight:600; padding:1px 6px; border-radius:4px;">{course}</span>
+            <span style="background:rgba(6,95,70,0.08); color:var(--emerald-dark); font-weight:600; padding:1px 6px; border-radius:4px;">{course_ar}</span>
+            <span style="background:rgba(6,95,70,0.08); color:var(--emerald-dark); font-weight:600; padding:1px 6px; border-radius:4px;">{score}</span>
+            <span style="background:rgba(6,95,70,0.08); color:var(--emerald-dark); font-weight:600; padding:1px 6px; border-radius:4px;">{band}</span>
+            <span style="background:rgba(6,95,70,0.08); color:var(--emerald-dark); font-weight:600; padding:1px 6px; border-radius:4px;">{band_ar}</span>
+            <span style="background:rgba(6,95,70,0.08); color:var(--emerald-dark); font-weight:600; padding:1px 6px; border-radius:4px;">{date}</span>
+          </span>
+        </div>
 
         <div style="font-size:0.85rem; font-weight:700; color:var(--emerald); margin:16px 0 8px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">
           Default Signatory Block
@@ -467,15 +477,19 @@ export async function renderInstitutionSettings(containerId = 'institutionSettin
           <input type="text" id="instSigTitleAr" dir="auto" value="${escapeAttr(sig.title_ar || "المشرف")}">
         </div>
 
-        <div class="field-row">
-          <label for="instLogo">Logo Path (optional)</label>
-          <input type="text" id="instLogo" placeholder="assets/logo.png" value="${escapeAttr(defs.logo || '')}">
-        </div>
+        ${renderImageUploadField({
+          id: "instLogo",
+          label: "Institution Logo (Optional)",
+          value: defs.logo || "",
+          hint: "PNG, JPG, SVG, or WebP. Automatically displayed on all course certificates.",
+        })}
 
-        <div class="field-row">
-          <label for="instSigImg">Signature Image Path (optional)</label>
-          <input type="text" id="instSigImg" placeholder="assets/signature.png" value="${escapeAttr(defs.signature_image || '')}">
-        </div>
+        ${renderImageUploadField({
+          id: "instSigImg",
+          label: "Signatory Signature Image (Optional)",
+          value: defs.signature_image || "",
+          hint: "Upload an image of the official signatory signature.",
+        })}
 
         <div class="entry-footer" style="margin-top:16px; display:flex; gap:10px; align-items:center;">
           <button class="save-btn" id="saveInstBtn" type="button">Save Institution Settings</button>
@@ -485,6 +499,8 @@ export async function renderInstitutionSettings(containerId = 'institutionSettin
       </div>
     `;
 
+    bindImageUpload('instLogo');
+    bindImageUpload('instSigImg');
     document.getElementById('saveInstBtn').addEventListener('click', saveInstitution);
     document.getElementById('previewInstCertBtn').addEventListener('click', () => {
       const g = (id) => document.getElementById(id).value.trim();

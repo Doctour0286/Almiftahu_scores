@@ -2,9 +2,8 @@
 // Results table, attempt detail inspector (with tab leaves and time away), and safe CSV export (AC-3.7).
 
 import { rpc, errorMessage } from './api.js';
-import { openByStudentMarking } from './marking.js';
 import { currentCourse } from './state.js';
-import { arHtml, escapeAttr, escapeHtml, fmtNum, setHint, showStatus } from './ui.js';
+import { escapeAttr, escapeHtml, fmtNum, setHint, formatQuestionResponse, formatQuestionKey, questionStatusBadge, formatSecurityEvent } from './ui.js';
 
 let resultsState = {
   courseId: null,
@@ -29,7 +28,12 @@ export async function renderResultsTab(containerId = 'resultsArea') {
 
   try {
     const list = await rpc('admin_results', { p_course_id: course.id });
-    resultsState.rows = Array.isArray(list) ? list : [];
+    // Normalize rows so student_name and student_name_ar are consistently present
+    resultsState.rows = (Array.isArray(list) ? list : []).map(r => ({
+      ...r,
+      student_name: r.student_name || r.name || 'Unknown',
+      student_name_ar: r.student_name_ar || r.name_ar || '',
+    }));
     renderResultsView(container);
   } catch (e) {
     container.innerHTML = `<div class="empty-state err">Failed to load exam results: ${escapeHtml(errorMessage(e))}</div>`;
@@ -59,7 +63,7 @@ function renderResultsView(container) {
       <!-- Summary metrics -->
       <div style="display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap;">
         <div style="background:var(--bg-warm); border:1px solid var(--border-color); border-radius:8px; padding:10px 14px; flex:1; min-width:140px;">
-          <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Total Attempts</div>
+          <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Total Students</div>
           <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${total}</div>
         </div>
         <div style="background:var(--bg-warm); border:1px solid var(--border-color); border-radius:8px; padding:10px 14px; flex:1; min-width:140px;">
@@ -81,8 +85,7 @@ function renderResultsView(container) {
         <input type="text" id="resultsSearchInput" placeholder="Filter by student name or S/N…"
           value="${escapeAttr(resultsState.filterText)}"
           style="flex:1; min-width:220px; padding:8px 12px; border:1.5px solid var(--border-color); border-radius:6px; background:var(--bg-warm); color:var(--text-dark);">
-
-        <button class="save-btn sm" id="exportCsvBtn" style="display:inline-flex; align-items:center; gap:6px;">
+        <button class="save-btn sm" id="exportCsvBtn" type="button" style="display:inline-flex; align-items:center; gap:6px;">
           <svg class="icon sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export CSV (Excel &amp; Sheets)
         </button>
@@ -90,7 +93,7 @@ function renderResultsView(container) {
 
       <!-- Results Table -->
       ${filtered.length === 0 ? `
-        <div class="empty-state">${rows.length === 0 ? 'No exam attempts recorded yet.' : 'No matching exam attempts.'}</div>
+        <div class="empty-state">${rows.length === 0 ? 'No students enrolled in this course.' : 'No matching students.'}</div>
       ` : `
         <div class="table-wrapper" style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:8px; overflow-x:auto;">
           <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
@@ -104,13 +107,15 @@ function renderResultsView(container) {
                 <th style="padding:10px 12px; width:110px;">Band</th>
                 <th style="padding:10px 12px; width:70px; text-align:center;">Leaves</th>
                 <th style="padding:10px 12px; width:80px; text-align:right;">Time Away</th>
-                <th style="padding:10px 12px; width:130px; text-align:right;">Actions</th>
+                <th style="padding:10px 12px; width:100px; text-align:right;">Actions</th>
               </tr>
             </thead>
             <tbody>
               ${filtered.map(r => {
                 const statusColor = r.status === 'finalized' ? 'var(--emerald-dark)' : (r.status === 'submitted' ? 'var(--gold-ochre)' : '#3b82f6');
                 const timeAway = r.time_away_seconds ? `${Math.floor(r.time_away_seconds / 60)}m ${r.time_away_seconds % 60}s` : '0s';
+                const hasAttempt = !!(r.attempt_id && r.attempt_id !== 'null');
+
                 return `
                   <tr style="border-bottom:1px solid var(--border-color);">
                     <td style="padding:10px 12px; color:var(--text-muted); font-weight:600;">${r.sn}</td>
@@ -120,7 +125,7 @@ function renderResultsView(container) {
                     </td>
                     <td style="padding:10px 12px;">
                       <span style="font-size:0.75rem; font-weight:600; color:${statusColor}; text-transform:uppercase;">
-                        ${escapeHtml(r.status || 'none')}
+                        ${escapeHtml(r.status || 'not_started')}
                       </span>
                     </td>
                     <td style="padding:10px 12px; text-align:right; font-weight:600;">
@@ -139,9 +144,13 @@ function renderResultsView(container) {
                       ${timeAway}
                     </td>
                     <td style="padding:10px 12px; text-align:right;">
-                      <button class="ghost-btn sm" data-inspect-attempt="${escapeAttr(r.attempt_id)}">
-                        Detail
-                      </button>
+                      ${hasAttempt ? `
+                        <button class="ghost-btn sm" data-inspect-attempt="${escapeAttr(r.attempt_id)}">
+                          Detail
+                        </button>
+                      ` : `
+                        <span style="color:var(--text-muted); font-size:0.75rem;">No attempt</span>
+                      `}
                     </td>
                   </tr>
                 `;
@@ -150,6 +159,7 @@ function renderResultsView(container) {
           </table>
         </div>
       `}
+
       <div id="attemptDetailModalWrap"></div>
     </div>
   `;
@@ -173,10 +183,13 @@ function renderResultsView(container) {
     downloadResultsCsv(course, rows);
   });
 
-  // Inspect detail buttons
+  // Detail buttons
   container.querySelectorAll('[data-inspect-attempt]').forEach(btn => {
     btn.addEventListener('click', () => {
-      openAttemptDetailModal(btn.dataset.inspectAttempt);
+      const attId = btn.dataset.inspectAttempt;
+      if (attId && attId !== 'null') {
+        openAttemptDetailModal(attId);
+      }
     });
   });
 }
@@ -185,7 +198,7 @@ function renderResultsView(container) {
 // SAFE CSV EXPORT (AC-3.7)
 // =============================================================================
 
-export function sanitizeCsvCell(val) {
+function sanitizeCsvCell(val) {
   if (val === null || val === undefined) return '';
   let s = String(val);
   // Formula injection defense: neutralize any cell starting with =, +, -, @, \t, \r
@@ -203,7 +216,7 @@ function downloadResultsCsv(course, rows) {
   const headers = [
     'S/N', 'Student Name', 'Arabic Name', 'Status', 'Exam %', 'Final Score',
     'Grade Band', 'Arabic Grade Band', 'Passed', 'Tab Leaves', 'Time Away (s)',
-    'Started At', 'Submitted At', 'Finalized At',
+    'Started At', 'Submitted At',
   ];
 
   const csvRows = [headers.map(sanitizeCsvCell).join(',')];
@@ -223,7 +236,6 @@ function downloadResultsCsv(course, rows) {
       r.time_away_seconds || 0,
       r.started_at || '',
       r.submitted_at || '',
-      r.finalized_at || '',
     ].map(sanitizeCsvCell).join(','));
   });
 
@@ -242,10 +254,12 @@ function downloadResultsCsv(course, rows) {
 }
 
 // =============================================================================
-// ATTEMPT DETAIL MODAL
+// ATTEMPT DETAIL MODAL (INSPECTOR)
 // =============================================================================
 
 async function openAttemptDetailModal(attemptId) {
+  if (!attemptId || attemptId === 'null' || attemptId === 'undefined') return;
+
   const wrap = document.getElementById('attemptDetailModalWrap');
   if (!wrap) return;
 
@@ -283,15 +297,15 @@ function renderAttemptDetailModal(wrap, detail) {
     <div class="modal-overlay" style="display:flex;" id="detailModalOverlay">
       <div class="modal-content" style="max-width:840px; max-height:90vh; overflow-y:auto; padding:26px;">
         <button class="close-btn" id="detailModalCloseBtn">&times;</button>
-
+        
         <div style="border-bottom:1.5px solid var(--border-color); padding-bottom:14px; margin-bottom:18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
               <h3 style="margin:0 0 4px; color:var(--emerald-dark); font-size:1.3rem;">
-                ${escapeHtml(att.student_name)} ${att.student_name_ar ? `<span dir="rtl" style="font-family:'Amiri',serif;">(${escapeHtml(att.student_name_ar)})</span>` : ''}
+                ${escapeHtml(att.student_name || 'Student')} ${att.student_name_ar ? `<span dir="rtl" style="font-family:'Amiri',serif;">(${escapeHtml(att.student_name_ar)})</span>` : ''}
               </h3>
               <div style="font-size:0.82rem; color:var(--text-muted);">
-                S/N: <b>${att.sn}</b> • Attempt: <span style="font-family:monospace;">${att.id}</span>
+                Student S/N: <b>${att.sn}</b>
               </div>
             </div>
             <div style="text-align:right;">
@@ -331,37 +345,42 @@ function renderAttemptDetailModal(wrap, detail) {
             <div style="padding:14px;">
               ${(sec.questions || []).map((q, qIdx) => {
                 const isEssay = sec.format === 'essay';
-                const pts = q.points !== null && q.points !== undefined ? q.points : (q.fraction !== null ? Math.round(q.fraction * q.value * 100) / 100 : null);
+                const maxVal = q.max_points != null ? Number(q.max_points) : (q.value != null ? Number(q.value) : 0);
+                const pts = q.points !== null && q.points !== undefined 
+                  ? Number(q.points) 
+                  : (q.fraction !== null && q.fraction !== undefined ? Math.round(Number(q.fraction) * maxVal * 100) / 100 : null);
+                const badge = questionStatusBadge(q);
+
                 return `
                   <div class="modal-q-item" style="border-bottom:1px solid var(--border-color); padding-bottom:14px; margin-bottom:14px;" data-detail-qid="${escapeAttr(q.id)}">
-                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:var(--text-muted); margin-bottom:6px;">
                       <span>Q${qIdx + 1} (${sec.format.toUpperCase()})</span>
-                      <span>Max: <b>${q.value} pts</b></span>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        ${badge}
+                        <span>Max: <b>${maxVal} pts</b></span>
+                      </div>
                     </div>
-                    <div dir="auto" style="font-weight:600; font-size:0.92rem; margin-bottom:8px;">
+
+                    <div dir="auto" style="font-weight:600; font-size:0.95rem; margin-bottom:10px; color:var(--text-dark);">
                       ${escapeHtml(q.prompt)}
                     </div>
 
-                    <!-- Student response -->
-                    <div style="background:var(--bg-warm); border-radius:6px; padding:8px 12px; margin-bottom:8px; font-size:0.85rem;">
-                      <span style="color:var(--text-muted); font-size:0.75rem;">Student Response:</span>
-                      <div dir="auto" style="margin-top:2px; font-weight:600;">
-                        ${isEssay ? escapeHtml((q.response && q.response.text) || '(Empty)') : `<code>${escapeHtml(JSON.stringify(q.response || {}))}</code>`}
+                    <!-- Student response (human-readable) -->
+                    <div style="background:var(--bg-warm); border:1px solid var(--border-color); border-radius:6px; padding:10px 12px; margin-bottom:8px;">
+                      <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; font-weight:600;">Student Response:</div>
+                      <div>
+                        ${formatQuestionResponse(q)}
                       </div>
                     </div>
 
-                    <!-- Correct key if auto -->
-                    ${q.key ? `
-                      <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;">
-                        Answer Key: <code>${escapeHtml(JSON.stringify(q.key))}</code>
-                      </div>
-                    ` : ''}
+                    <!-- Correct key (human-readable) -->
+                    ${q.key ? formatQuestionKey(q) : ''}
 
                     <!-- Points editor (allows marking and overrides FR-M6) -->
-                    <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-top:8px;">
+                    <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-top:12px; padding-top:8px; border-top:1px dashed var(--border-color);">
                       <div style="width:120px;">
-                        <label style="display:block; font-size:0.75rem; font-weight:600; margin-bottom:2px;">Points (0-${q.value})</label>
-                        <input type="number" class="modal-pts-inp" min="0" max="${q.value}" step="0.25"
+                        <label style="display:block; font-size:0.75rem; font-weight:600; margin-bottom:2px;">Points (0-${maxVal})</label>
+                        <input type="number" class="modal-pts-inp" min="0" max="${maxVal}" step="0.25"
                           value="${pts !== null ? pts : ''}"
                           style="width:100%; box-sizing:border-box; padding:5px 8px; border:1px solid var(--border-color); border-radius:6px; font-size:0.9rem; font-weight:600;">
                       </div>
@@ -372,7 +391,7 @@ function renderAttemptDetailModal(wrap, detail) {
                           placeholder="Feedback…"
                           style="width:100%; box-sizing:border-box; padding:5px 8px; border:1px solid var(--border-color); border-radius:6px; font-size:0.82rem;">
                       </div>
-                      <button class="save-btn sm modal-q-save-btn" data-qid="${escapeAttr(q.id)}" data-max="${q.value}">
+                      <button class="save-btn sm modal-q-save-btn" data-qid="${escapeAttr(q.id)}" data-max="${maxVal}">
                         ${q.marked_by === 'teacher' ? 'Update Mark' : (isEssay ? 'Mark Essay' : 'Override Mark')}
                       </button>
                     </div>
@@ -387,12 +406,12 @@ function renderAttemptDetailModal(wrap, detail) {
         <!-- Security Events log -->
         ${events.length > 0 ? `
           <div style="margin-top:20px;">
-            <h5 style="margin:0 0 8px; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">Security &amp; Visibility Events</h5>
+            <h5 style="margin:0 0 8px; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">Security &amp; Tab Events</h5>
             <div style="background:var(--bg-warm); border:1px solid var(--border-color); border-radius:6px; max-height:160px; overflow-y:auto; padding:8px 12px; font-size:0.78rem; font-family:monospace;">
               ${events.map(ev => `
                 <div style="border-bottom:1px solid var(--border-color); padding:4px 0; display:flex; justify-content:space-between;">
-                  <span>${escapeHtml(ev.event_type)}: ${escapeHtml(JSON.stringify(ev.payload || {}))}</span>
-                  <span style="color:var(--text-muted);">${new Date(ev.created_at).toLocaleTimeString()}</span>
+                  <span><b>${escapeHtml(ev.type || ev.event_type || 'event')}</b></span>
+                  <span style="color:var(--text-muted);">${ev.at || ev.created_at ? new Date(ev.at || ev.created_at).toLocaleTimeString() : ''}</span>
                 </div>
               `).join('')}
             </div>
@@ -422,8 +441,8 @@ function renderAttemptDetailModal(wrap, detail) {
       const ptsInp = card.querySelector('.modal-pts-inp');
       const cmtInp = card.querySelector('.modal-cmt-inp');
       const hint = card.querySelector('.modal-q-hint');
-
       const pts = parseFloat(ptsInp.value);
+
       if (isNaN(pts) || pts < 0 || pts > maxVal) {
         return setHint(hint, `Points must be between 0 and ${maxVal}.`, 'err');
       }
