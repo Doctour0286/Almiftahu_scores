@@ -43,7 +43,7 @@ create table if not exists private.audio_submissions (
   lesson_id text not null,
   lesson_title text not null,
   course_id uuid not null references public.courses(id) on delete cascade,
-  student_id uuid references public.students(id) on delete set null,
+  student_id text references public.students(id) on delete set null,
   student_name text not null,
   student_name_ar text,
   audio_url text not null,
@@ -70,7 +70,7 @@ create table if not exists private.lesson_quiz_attempts (
   id uuid primary key default gen_random_uuid(),
   lesson_id text not null,
   course_id uuid not null references public.courses(id) on delete cascade,
-  student_id uuid references public.students(id) on delete set null,
+  student_id text references public.students(id) on delete set null,
   score numeric(5,2) not null default 0,
   max_score numeric(5,2) not null default 10,
   answers jsonb not null default '{}'::jsonb,
@@ -146,11 +146,14 @@ grant execute on function public.staff_login(text, text) to anon, authenticated;
 -- 6. RPCs: Audio Memorization Submission & Teacher Grading
 -- ---------------------------------------------------------------------------------------------
 
+-- Drop any prior variant with uuid student_id to prevent overload mismatch
+drop function if exists public.submit_audio_recitation(text, text, uuid, uuid, text, text, text, int);
+
 create or replace function public.submit_audio_recitation(
   p_lesson_id text,
   p_lesson_title text,
   p_course_id uuid,
-  p_student_id uuid,
+  p_student_id text,
   p_student_name text,
   p_student_name_ar text,
   p_audio_url text,
@@ -179,7 +182,7 @@ begin
 end;
 $$;
 
-grant execute on function public.submit_audio_recitation(text, text, uuid, uuid, text, text, text, int) to anon, authenticated;
+grant execute on function public.submit_audio_recitation(text, text, uuid, text, text, text, text, int) to anon, authenticated;
 
 create or replace function public.admin_grade_audio(
   p_submission_id uuid,
