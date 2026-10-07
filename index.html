@@ -1,145 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Almiftahu Scores & Certificates</title>
-<meta name="description" content="Student examination portal, score management, and certificate verification for Ma'had Miftah al-'Ilm.">
-<meta property="og:title" content="Almiftahu Scores & Certificates">
-<meta property="og:description" content="Student examination portal, score management, and certificate verification for Ma'had Miftah al-'Ilm.">
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/print.css" media="print">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Almiftahu Scores & Certificates</title>
+  <meta name="description" content="Comprehensive Islamic LMS, multi-unit multimedia curriculum, examination portal, and certificate verification for Ma'had Miftah al-'Ilm.">
+  <meta property="og:title" content="Almiftahu Scores & Certificates">
+  <meta property="og:description" content="Comprehensive Islamic LMS, multi-unit multimedia curriculum, examination portal, and certificate verification for Ma'had Miftah al-'Ilm.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/print.css" media="print">
 </head>
-<body>
-
-<header>
-  <button class="teacher-tag" id="teacherTag"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Teacher</button>
-  <div class="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
-  <h1>معهد مفتاح العلم</h1>
-  <h2>Ma'had Miftah al-'Ilm &bull; Score Portal</h2>
-  <div class="course-switch" id="courseSwitchWrap" style="display:none;"><select id="courseSwitch" aria-label="Course"></select></div>
-</header>
-
-<div class="nav-tabs" id="navTabs">
-  <button class="tab-btn active" data-tab="directory"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Directory</button>
-  <button class="tab-btn" data-tab="leaderboard"><svg class="icon" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4a2 2 0 0 0 0 4h1M17 6h3a2 2 0 0 1 0 4h-1"/></svg>Leaderboard</button>
-  <button class="tab-btn" data-tab="overview"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>Full Sheet</button>
-  <button class="tab-btn" data-tab="exam"><svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Exam</button>
-  <button class="tab-btn" data-tab="manage" id="manageTabBtn" style="display:none;"><svg class="icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>Manage Students</button>
-</div>
-
-<div class="container">
-  <div id="statusArea"></div>
-
-  <div id="tab-directory" class="tab-content active">
-    <input type="text" id="search" class="search-box" placeholder="Search student name...">
-    <div id="studentGrid" class="student-grid"></div>
-  </div>
-
-  <div id="tab-leaderboard" class="tab-content">
-    <div id="leaderboardList" class="leaderboard-list"></div>
-  </div>
-
-  <div id="tab-overview" class="tab-content">
-    <div class="table-wrapper">
-      <table>
-        <thead><tr id="tableHeader"></tr></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-  </div>
-  <div id="tab-exam" class="tab-content">
-    <div id="studentExamArea"></div>
-  </div>
-
-  <div id="tab-manage" class="tab-content">
-    <div id="manageArea"></div>
-  </div>
-</div>
-
-<div id="scoreModal" class="modal-overlay">
-  <div class="modal-content">
-    <button class="close-btn" id="modalClose">&times;</button>
-    <div class="modal-header">
-      <h3 id="modalName">Student Name</h3>
-      <p id="modalSN">S/N: --</p>
-    </div>
-    <div class="score-summary-box">
-      <div class="total-val" id="modalTotal">0</div>
-      <div class="total-lbl" id="modalTotalLbl">Total Accumulated Score (max 100)</div>
-    </div>
-    <div class="score-grid" id="modalScoreGrid"></div>
-    <div id="modalEditWrap" style="display:none;"></div>
-  </div>
-</div>
-
-<div id="scoreEditModal" class="modal-overlay">
-  <div class="modal-content">
-    <button class="close-btn" id="scoreEditClose">&times;</button>
-    <div class="modal-header">
-      <h3 id="editModalName">Student Name</h3>
-      <p id="editModalTotal">Total: 0 / 100</p>
-    </div>
-
-    <div id="editPickerView">
-      <p id="editPickHelp" style="text-align:center; font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Select a day to edit</p>
-      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;" id="editDayDots"></div>
-      <div class="save-hint" id="editPickerHint" style="margin-top:14px; text-align:center;"></div>
-    </div>
-
-    <div id="editFormView" style="display:none;">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px;">
-        <button class="ghost-btn" id="editBackToDays">&larr; Days</button>
-        <div style="font-weight:700; color:var(--emerald-dark); font-size:1.05rem;" id="editDayLabel">Day 1</div>
-        <span style="width:64px;"></span>
-      </div>
-      <div class="day-grid" style="grid-template-columns: 1fr; gap:12px;">
-        <div class="day-field">
-          <label id="editScoreLabel">Score (0-<span id="editDayMaxLabel">10</span>)</label>
-          <input type="number" min="0" max="10" step="1" id="editDayScoreInput" placeholder="0-10">
-        </div>
-        <div class="day-field">
-          <label id="editBonusLabel">Bonus units for this day (each = <span id="editBonusValLabel">2</span> pts)</label>
-          <input type="number" min="0" step="1" id="editDayBonusInput" placeholder="0">
-        </div>
-      </div>
-      <div class="entry-footer" style="margin-top:16px;">
-        <button class="save-btn" id="editSaveBtn" style="width:100%; justify-content:center;"><svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span id="editSaveText">Save Day 1</span></button>
-      </div>
-      <div class="save-hint" id="editHint" style="margin-top:10px; text-align:center;"></div>
-    </div>
-  </div>
-</div>
-
-
-<div id="certificateModal" class="modal-overlay">
-  <div class="modal-content certificate-modal-content">
-    <div class="cert-action-bar no-print" style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:var(--bg-card); border-bottom:1px solid var(--border-color); border-radius:8px 8px 0 0;">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <button class="save-btn" id="certPrintBtn" type="button" style="display:inline-flex; align-items:center; gap:6px;">
-          <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-          Print / Save as PDF
-        </button>
-        <span style="font-size:0.8rem; color:var(--text-muted);">(Set orientation to Landscape in print dialog)</span>
-      </div>
-      <button class="close-btn" id="certCloseBtn" type="button" style="font-size:1.5rem; border:none; background:none; cursor:pointer;">&times;</button>
-    </div>
-    <div id="certificateRenderWrap" style="overflow-x:auto; padding:16px; display:flex; justify-content:center; background:#525659;"></div>
-  </div>
-</div>
-
-<div id="confirmOverlay" class="confirm-overlay">
-  <div class="confirm-box">
-    <h4 id="confirmTitle">Are you sure?</h4>
-    <p id="confirmBody">This cannot be undone.</p>
-    <div class="confirm-actions">
-      <button class="ghost-btn" id="confirmCancel">Cancel</button>
-      <button class="danger-btn" id="confirmOk">Confirm</button>
-    </div>
-  </div>
-</div>
-
-<script type="module" src="js/main.js"></script>
+<body class="bg-[#fbf9f5] text-stone-900 font-sans antialiased selection:bg-emerald-700 selection:text-white overflow-x-hidden min-h-screen">
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

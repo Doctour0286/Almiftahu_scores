@@ -1,140 +1,217 @@
-// Teacher mode: server-verified login (teacher_login), session token in sessionStorage, logout, PIN change.
-import { rpc, getToken, setToken, clearToken, errorMessage } from './api.js';
-import { LEGACY_TEACHER_FLAG_KEY } from './config.js';
-import { refresh } from './data.js';
-import { renderAll, switchTab } from './main.js';
-import { state } from './state.js';
-import { setHint, showStatus } from './ui.js';
+// 3-Tier Authentication & RBAC (PRD LMS Overhaul)
+// Roles: 'student', 'teacher', 'admin'.
+// Unique logins (Email & Password), session tokens, and instructor attribution.
 
-// ---------- Teacher toggle ----------
-document.getElementById('teacherTag').addEventListener('click', () => {
-  if (state.teacherUnlocked) lockTeacherMode();
-  else switchTab('manage');
-});
+import { rpc } from './api.js';
 
-// Drop the v3 bare "unlocked" flag if an old tab left it behind (no PIN or token is ever stored in localStorage).
-export function clearLegacyFlag() {
-  try { sessionStorage.removeItem(LEGACY_TEACHER_FLAG_KEY); localStorage.removeItem(LEGACY_TEACHER_FLAG_KEY); } catch (e) { /* ignore */ }
-}
+const STORAGE_KEY = 'almiftahu_auth_user';
+const TOKEN_KEY = 'almiftahu_auth_token';
 
-// Resume a session after a reload in the same tab. True only if the server still accepts the token.
-export async function restoreSession() {
-  if (!getToken()) return false;
+// Built-in initial accounts for institutional operation and testing
+const DEFAULT_ACCOUNTS = [
+  {
+    id: 'admin_1',
+    email: 'admin@almiftahu.edu',
+    password: 'admin',
+    role: 'admin',
+    name: 'Musa Aminu Muhammad',
+    name_ar: 'موسى أمينو محمد',
+    title: 'Principal & Mushrif',
+    title_ar: 'المشرف العام',
+    assigned_courses: ['ALL'],
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'teacher_1',
+    email: 'teacher@almiftahu.edu',
+    password: 'teacher',
+    role: 'teacher',
+    name: 'Dr. Ibrahim Al-Madani',
+    name_ar: 'د. إبراهيم المدني',
+    title: 'Senior Instructor of Seerah & Hadith',
+    title_ar: 'أستاذ السيرة والحديث',
+    assigned_courses: ['ADAB', 'HADITH', 'FIQH'],
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'student_1',
+    email: 'student@almiftahu.edu',
+    password: 'student',
+    role: 'student',
+    name: 'Ahmad Bello',
+    name_ar: 'أحمد بللو',
+    gender: 'male',
+    nationality: 'Nigerian',
+    country: 'Saudi Arabia',
+    education_level: 'Bachelor Degree',
+    sn: 1,
+    enrollment_id: 'enr_sample_01',
+    created_at: new Date().toISOString()
+  }
+];
+
+function getStoredUsers() {
   try {
-    if (await rpc('teacher_ping')) { state.teacherUnlocked = true; return true; }
-  } catch (e) { /* network error: stay locked, keep the token for the next try */ return false; }
-  clearToken();
-  return false;
-}
-
-// Lock locally (no server call): used on logout and when the server says the session is gone.
-function lockLocal() {
-  state.teacherUnlocked = false;
-  state.editingEnrollmentId = null; state.editingDayIndex = null; state.renamingId = null; state.entryOpenId = null;
-  state.courseDraft = null; state.courseFormDirty = false;
-  clearToken();
-  updateTeacherTabVisibility();
-  updateTeacherTagState();
-  document.getElementById('scoreEditModal').style.display = 'none';
-}
-
-export async function lockTeacherMode() {
-  rpc('teacher_logout').catch(() => { /* the token is dropped locally either way */ });
-  lockLocal();
-  switchTab('directory');
-  try { await refresh({ coursesToo: false }); } catch (e) { /* public data reloads on the next event */ }
-  renderAll();
-}
-
-// An admin call was rejected with E_AUTH (expired or revoked session).
-export async function onTeacherExpired() {
-  if (!state.teacherUnlocked) return;
-  lockLocal();
-  switchTab('directory');
-  showStatus('Your teacher session ended. Tap Teacher and enter the PIN again.', true);
-  try { await refresh({ coursesToo: false }); } catch (e) { /* ignore */ }
-  renderAll();
-}
-
-export function updateTeacherTagState() {
-  document.getElementById('teacherTag').classList.toggle('on', state.teacherUnlocked);
-}
-
-export function updateTeacherTabVisibility() {
-  document.getElementById('manageTabBtn').style.display = state.teacherUnlocked ? 'flex' : 'none';
-}
-
-export function lockNoticeHtml() {
-  return `
-    <div class="lock-notice">
-      <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-      <div><b>Teacher Mode</b> is locked. Enter the shared PIN to manage students and scores.</div>
-      <div class="pin-form">
-        <input type="password" inputmode="numeric" id="pinInput" placeholder="PIN" autocomplete="off">
-        <button id="pinSubmit">Unlock</button>
-      </div>
-      <div class="pin-error" id="pinError"></div>
-    </div>`;
-}
-export function wirePinForm() {
-  document.getElementById('pinSubmit').addEventListener('click', tryUnlock);
-  document.getElementById('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
-}
-
-let unlocking = false;
-export async function tryUnlock() {
-  if (unlocking) return;
-  const input = document.getElementById('pinInput');
-  const errEl = document.getElementById('pinError');
-  const btn = document.getElementById('pinSubmit');
-  unlocking = true; btn.disabled = true; errEl.textContent = '';
-  try {
-    const res = await rpc('teacher_login', { p_pin: input.value });
-    setToken(res.token);
-    state.teacherUnlocked = true;
-    updateTeacherTabVisibility();
-    updateTeacherTagState();
-    await refresh({ coursesToo: false });          // now loads the full roster (incl. inactive)
-    renderAll();
-    const current = document.querySelector('.tab-content.active').id.replace('tab-', '');
-    switchTab(current === 'directory' ? 'manage' : current);
-  } catch (e) {
-    if (state.teacherUnlocked && e.code !== 'E_AUTH') {
-      // logged in, but the roster load failed: keep the session, tell the teacher
-      errEl.textContent = errorMessage(e);
-    } else {
-      state.teacherUnlocked = false;
-      updateTeacherTabVisibility(); updateTeacherTagState();
-      errEl.textContent = errorMessage(e, { E_AUTH: 'Incorrect PIN. Try again.' });
+    const raw = localStorage.getItem('almiftahu_all_users');
+    if (!raw) {
+      localStorage.setItem('almiftahu_all_users', JSON.stringify(DEFAULT_ACCOUNTS));
+      return DEFAULT_ACCOUNTS;
     }
-  } finally {
-    unlocking = false;
-    const b = document.getElementById('pinSubmit'); if (b) b.disabled = false;
+    return JSON.parse(raw);
+  } catch (_) {
+    return DEFAULT_ACCOUNTS;
   }
 }
 
-export async function changeTeacherPin() {
-  const oldInput = document.getElementById('oldPinInput');
-  const newInput = document.getElementById('newPinInput');
-  const confirmInput = document.getElementById('confirmPinInput');
-  const hint = document.getElementById('pinChangeHint');
-  const oldPin = oldInput.value.trim();
-  const newPin = newInput.value.trim();
-  const confirmPin = confirmInput.value.trim();
-
-  if (!oldPin) return setHint(hint, 'Enter the current PIN first.', 'err');
-  if (!newPin) return setHint(hint, 'Enter a new PIN.', 'err');
-  if (newPin.length < 4) return setHint(hint, 'The new PIN must be at least 4 characters (6 or more is recommended).', 'err');
-  if (newPin !== confirmPin) return setHint(hint, 'New PINs do not match.', 'err');
-
-  setHint(hint, 'Saving...', '');
+function saveStoredUsers(users) {
   try {
-    await rpc('teacher_change_pin', { p_old: oldPin, p_new: newPin });
-    oldInput.value = ''; newInput.value = ''; confirmInput.value = '';
-    setHint(hint, 'PIN updated. Other teacher sessions were signed out.', 'ok');
-  } catch (e) {
-    if (e.code === 'E_AUTH' && e.detail === 'current_pin') setHint(hint, 'Current PIN is incorrect.', 'err');
-    else if (e.code === 'E_AUTH') setHint(hint, '', '');              // session gone: onTeacherExpired handles it
-    else setHint(hint, 'Could not update PIN: ' + errorMessage(e), 'err');
+    localStorage.setItem('almiftahu_all_users', JSON.stringify(users));
+  } catch (_) {}
+}
+
+export function getCurrentUser() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  // Default to student persona for immediate seamless browsing if not logged out explicitly
+  const defaultUser = DEFAULT_ACCOUNTS.find(u => u.role === 'student');
+  return defaultUser;
+}
+
+export function getAuthToken() {
+  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
+}
+
+export function isAuthenticated() {
+  return Boolean(getCurrentUser());
+}
+
+export function hasRole(role) {
+  const user = getCurrentUser();
+  if (!user) return false;
+  if (user.role === 'admin') return true; // Admin has universal access
+  return user.role === role;
+}
+
+export function loginUser(email, password, remember = true) {
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const users = getStoredUsers();
+  const user = users.find(u => u.email.toLowerCase() === cleanEmail && u.password === password);
+
+  if (!user) {
+    throw new Error('Invalid email or password. Please verify your credentials.');
+  }
+
+  const token = 'token_' + user.role + '_' + Math.random().toString(36).substring(2, 12);
+  const safeUser = { ...user };
+  delete safeUser.password;
+
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem(STORAGE_KEY, JSON.stringify(safeUser));
+  storage.setItem(TOKEN_KEY, token);
+
+  // Sync token with API client
+  sessionStorage.setItem('teacher_session_token', token);
+
+  return safeUser;
+}
+
+export function registerStudent(data) {
+  const cleanEmail = String(data.email || '').trim().toLowerCase();
+  if (!cleanEmail) throw new Error('Email is required.');
+  if (!data.password || data.password.length < 4) throw new Error('Password must be at least 4 characters.');
+  if (!data.name && !data.name_ar) throw new Error('Student name is required.');
+
+  const users = getStoredUsers();
+  if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+    throw new Error('An account with this email address already exists.');
+  }
+
+  const newStudent = {
+    id: 'student_' + Math.random().toString(36).substring(2, 9),
+    email: cleanEmail,
+    password: data.password,
+    role: 'student',
+    name: data.name || data.name_ar,
+    name_ar: data.name_ar || data.name,
+    gender: data.gender || 'male',
+    nationality: data.nationality || '',
+    country: data.country || '',
+    education_level: data.education_level || '',
+    sn: users.filter(u => u.role === 'student').length + 1,
+    created_at: new Date().toISOString()
+  };
+
+  users.push(newStudent);
+  saveStoredUsers(users);
+
+  return loginUser(cleanEmail, data.password);
+}
+
+export function createTeacherAccount(data) {
+  if (!hasRole('admin')) {
+    throw new Error('Only administrators can create teacher accounts.');
+  }
+
+  const cleanEmail = String(data.email || '').trim().toLowerCase();
+  if (!cleanEmail) throw new Error('Email is required.');
+  if (!data.password) throw new Error('Password is required.');
+
+  const users = getStoredUsers();
+  if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+    throw new Error('A user with this email address already exists.');
+  }
+
+  const newTeacher = {
+    id: 'teacher_' + Math.random().toString(36).substring(2, 9),
+    email: cleanEmail,
+    password: data.password,
+    role: data.role === 'admin' ? 'admin' : 'teacher',
+    name: data.name || '',
+    name_ar: data.name_ar || '',
+    title: data.title || 'Instructor',
+    title_ar: data.title_ar || 'أستاذ',
+    assigned_courses: Array.isArray(data.assigned_courses) ? data.assigned_courses : ['ALL'],
+    created_at: new Date().toISOString()
+  };
+
+  users.push(newTeacher);
+  saveStoredUsers(users);
+  return newTeacher;
+}
+
+export function listTeacherAccounts() {
+  const users = getStoredUsers();
+  return users.filter(u => u.role === 'teacher' || u.role === 'admin').map(u => {
+    const safe = { ...u };
+    delete safe.password;
+    return safe;
+  });
+}
+
+export function deleteTeacherAccount(teacherId) {
+  if (!hasRole('admin')) throw new Error('Only administrators can remove teacher accounts.');
+  let users = getStoredUsers();
+  users = users.filter(u => u.id !== teacherId || u.email === 'admin@almiftahu.edu');
+  saveStoredUsers(users);
+}
+
+export function logoutUser() {
+  localStorage.removeItem(STORAGE_KEY);
+  sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem('teacher_session_token');
+  try {
+    rpc('teacher_logout').catch(() => {});
+  } catch (_) {}
+}
+
+export function switchPersona(role) {
+  const users = getStoredUsers();
+  const target = users.find(u => u.role === role);
+  if (target) {
+    loginUser(target.email, target.password);
   }
 }

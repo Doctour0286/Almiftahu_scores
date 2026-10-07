@@ -1,0 +1,6 @@
+{
+  "name": "Almiftahu Scores & Certificates",
+  "description": "Comprehensive Islamic LMS, multi-unit multimedia curriculum, examination portal, and certificate verification for Ma'had Miftah al-'Ilm.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
