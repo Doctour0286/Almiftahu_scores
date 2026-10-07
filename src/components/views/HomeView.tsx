@@ -9,9 +9,12 @@ import {
   ArrowRight,
   ArrowLeft,
   GraduationCap,
-  Sparkles
+  Sparkles,
+  KeyRound,
+  Mic
 } from 'lucide-react';
 import { Course, UserAccount, StudentProgress } from '../../types/lms';
+import { store } from '../../services/storage';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 interface HomeViewProps {
@@ -29,6 +32,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
 }) => {
   const { t, isRtl, language } = useLanguage();
   const ArrowIcon = isRtl ? ArrowLeft : ArrowRight;
+
+  // Student specific audio submissions
+  const studentAudioSubs = store.getAudioSubmissions().filter((s) => s.student_id === currentUser.id);
+  const approvedAudioSubs = studentAudioSubs.filter((s) => s.status === 'approved');
 
   // Calculate completion percentage
   const allLessons = activeCourse.units.flatMap((u) => u.lessons);
@@ -53,9 +60,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <span>{t.bismillah}</span>
           </div>
 
-          <h2 className="font-arabic-heading text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">
-            {t.welcomeBack} {currentUser.name_ar || currentUser.name}
-          </h2>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h2 className="font-arabic-heading text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              {t.welcomeBack} {currentUser.name_ar || currentUser.name}
+            </h2>
+            {currentUser.role === 'student' && (
+              <span className="px-3 py-1 bg-amber-400 text-emerald-950 rounded-xl font-mono font-bold text-xs shadow-xs border border-amber-300">
+                {currentUser.institution_code || `MIF-2026-${String(currentUser.sn || 1).padStart(3, '0')}`}
+              </span>
+            )}
+          </div>
 
           <p className="text-emerald-100 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
             {t.welcomeDesc}
@@ -174,6 +188,53 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Student Unique Code & Audio Memorization Tracker */}
+      {currentUser.role === 'student' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-950 flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-amber-900">
+                {language === 'ha' ? 'Lambar Rajistarka (Institution Code):' : 'Your Unique Student Code:'}{' '}
+                <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-300">
+                  {currentUser.institution_code || `MIF-2026-${String(currentUser.sn || 1).padStart(3, '0')}`}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
+                {language === 'ha'
+                  ? 'Kana amfani da wannan lambar ce wajen shiga manhaja. Nan gaba za a nemi ka saka email domin mayar da asusunka zuwa ingantaccen tsaro mai kalmar sirri.'
+                  : 'You are currently using this unique code for login pending your upcoming email security upgrade.'}
+              </p>
+            </div>
+          </div>
+
+          <div
+            onClick={() => onNavigate('classroom')}
+            className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-950 flex items-center justify-between cursor-pointer hover:bg-emerald-100/60 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-200 text-emerald-900 flex items-center justify-center shrink-0">
+                <Mic className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-emerald-900">
+                  {language === 'ha' ? 'Haddar Karatun Murya (Audio Memorization)' : 'Audio Memorization Submissions'}
+                </div>
+                <div className="text-[11px] text-emerald-800 mt-0.5">
+                  {approvedAudioSubs.length} / 10 {language === 'ha' ? 'darussa malamai sun amince' : 'approved by teacher'}
+                  {studentAudioSubs.some(s => s.status === 'pending') && (
+                    <span className="text-amber-800 font-bold ml-1.5">(Akwai mai jiran duba)</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <ArrowIcon className="w-4 h-4 text-emerald-800" />
+          </div>
+        </div>
+      )}
 
       {/* Multi-Unit Curriculum Roadmap */}
       <div className="bg-white rounded-3xl border border-stone-200/80 p-6 shadow-2xs">

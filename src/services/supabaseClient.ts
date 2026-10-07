@@ -72,7 +72,9 @@ export async function fetchLiveStudents(): Promise<UserAccount[]> {
 
     return data.map((s: any) => ({
       id: s.id,
-      email: `student_${s.id}@almiftahu.edu`,
+      sn: Number(s.sn || 1),
+      institution_code: `MIF-2026-${String(s.sn || 1).padStart(3, '0')}`,
+      email: `student.${s.id}@almiftahu.edu`,
       role: 'student' as const,
       name: s.name || `Student ${s.sn}`,
       name_ar: s.name_ar || s.name || 'طالب',
@@ -80,7 +82,7 @@ export async function fetchLiveStudents(): Promise<UserAccount[]> {
       nationality: 'Dan Najeriya',
       country: 'Nigeria',
       education_level: 'Matakin Farko',
-      sn: Number(s.sn || 1),
+      assigned_courses: ['e7e08a6f-2d32-4d45-8720-c1f98e58563b', 'ADAB'],
       created_at: new Date().toISOString()
     }));
   } catch (err) {

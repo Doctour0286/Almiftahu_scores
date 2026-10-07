@@ -3,6 +3,7 @@ export type UserRole = 'student' | 'teacher' | 'admin';
 export interface UserAccount {
   id: string;
   email: string;
+  institution_code?: string;
   role: UserRole;
   name: string;
   name_ar: string;
@@ -166,7 +167,7 @@ export interface ExamAttempt {
   max_points?: number;
   responses: Record<string, any>;
   grades: Record<string, GradeAttribution>;
-  security_events: SecurityEvent[];
+  security_events?: SecurityEvent[];
 }
 
 export interface CertificateRecord {

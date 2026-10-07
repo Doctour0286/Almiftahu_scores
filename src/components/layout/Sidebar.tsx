@@ -55,15 +55,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const roleBadge = () => {
     switch (currentUser.role) {
       case 'admin':
-        return { label: t.roleAdmin, bg: 'bg-amber-100 text-amber-900 border-amber-300' };
+        return { label: language === 'ha' ? 'Shugaba / Dean' : t.roleAdmin, bg: 'bg-amber-100 text-amber-900 border-amber-300' };
       case 'teacher':
-        return { label: t.roleTeacher, bg: 'bg-emerald-100 text-emerald-900 border-emerald-300' };
+        return { label: language === 'ha' ? 'Malami Mai Koyarwa' : t.roleTeacher, bg: 'bg-emerald-100 text-emerald-900 border-emerald-300' };
       default:
-        return { label: t.roleStudent, bg: 'bg-stone-100 text-stone-700 border-stone-300' };
+        return { label: language === 'ha' ? 'Dalibi Mai Rajista' : t.roleStudent, bg: 'bg-stone-100 text-stone-700 border-stone-300' };
     }
   };
 
   const badge = roleBadge();
+
+  // Actor-specific navigation menu tailored to priorities
+  const getRoleNavItems = () => {
+    if (currentUser.role === 'admin') {
+      return [
+        { id: 'admin_console', label: language === 'ha' ? 'Ofishin Shugaba (Console)' : 'Principal Console', icon: Shield },
+        { id: 'teacher_workspace', label: language === 'ha' ? 'Kula da Makin Dalibai' : 'Grading & Review', icon: GraduationCap },
+        { id: 'classroom', label: language === 'ha' ? 'Manhajar Karatu (ADAB)' : 'Curriculum Viewer', icon: Headphones },
+        { id: 'certificates', label: language === 'ha' ? 'Bada Shahadodi' : 'Certificates Authority', icon: Award },
+        { id: 'home', label: language === 'ha' ? 'Babban Shafi' : t.navHome, icon: Home }
+      ];
+    }
+    if (currentUser.role === 'teacher') {
+      return [
+        { id: 'teacher_workspace', label: language === 'ha' ? 'Zauren Malami (Audio & Grades)' : 'Teacher Workspace', icon: GraduationCap },
+        { id: 'classroom', label: language === 'ha' ? 'Tsarin Darussa (ADAB)' : 'Lesson Lessons', icon: Headphones },
+        { id: 'certificates', label: language === 'ha' ? 'Duba Shahadodi' : 'Certificates', icon: Award },
+        { id: 'home', label: language === 'ha' ? 'Babban Shafi' : t.navHome, icon: Home }
+      ];
+    }
+    // Student navigation (Focused purely on learning)
+    return [
+      { id: 'home', label: language === 'ha' ? 'Babban Shafi (My Studies)' : t.navHome, icon: Home },
+      { id: 'classroom', label: language === 'ha' ? 'Karatun Darasi & Murya' : t.navClassroom, icon: Headphones },
+      { id: 'exams', label: language === 'ha' ? 'Jarabawa' : t.navExams, icon: FileCheck },
+      { id: 'certificates', label: language === 'ha' ? 'Takardar Shaida' : t.navCertificates, icon: Award },
+      { id: 'schedule', label: language === 'ha' ? 'Jadawali' : t.navSchedule, icon: Calendar }
+    ];
+  };
+
+  const currentNavItems = getRoleNavItems();
 
   return (
     <aside
@@ -115,30 +146,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* User profile capsule */}
       <div className="p-3 border-b border-stone-100 bg-stone-50/50">
         {!collapsed ? (
-          <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-stone-200/80 shadow-2xs">
-            <div className="w-9 h-9 rounded-full bg-emerald-800 text-white flex items-center justify-center font-bold text-sm shrink-0">
-              {currentUser.name_ar ? currentUser.name_ar.charAt(0) : 'M'}
+          <div className="p-2.5 bg-white rounded-2xl border border-stone-200 shadow-2xs space-y-1.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-900 text-amber-300 flex items-center justify-center font-bold text-sm shrink-0 border border-amber-300/50">
+                {currentUser.name_ar ? currentUser.name_ar.charAt(0) : 'M'}
+              </div>
+              <div className="overflow-hidden flex-1">
+                <div className="text-xs font-bold text-stone-900 truncate">
+                  {currentUser.name_ar || currentUser.name}
+                </div>
+                <div className="text-[10px] text-stone-500 truncate">
+                  {currentUser.title || currentUser.name}
+                </div>
+              </div>
             </div>
-            <div className="overflow-hidden flex-1">
-              <div className="text-xs font-bold text-stone-900 truncate">
-                {currentUser.name_ar || currentUser.name}
-              </div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`text-[10px] font-medium px-1.5 py-0.2 rounded-sm border ${badge.bg}`}>
-                  {badge.label}
+
+            <div className="flex items-center justify-between pt-1 border-t border-stone-100">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badge.bg}`}>
+                {badge.label}
+              </span>
+              {currentUser.role === 'student' && (
+                <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                  {currentUser.institution_code || `MIF-2026-${String(currentUser.sn || 1).padStart(3, '0')}`}
                 </span>
-                {currentUser.sn && (
-                  <span className="text-[10px] text-stone-400">
-                    #{currentUser.sn}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
           </div>
         ) : (
           <div className="flex justify-center">
             <div
-              className="w-10 h-10 rounded-full bg-emerald-800 text-white flex items-center justify-center font-bold text-sm"
+              className="w-10 h-10 rounded-xl bg-emerald-900 text-amber-300 flex items-center justify-center font-bold text-sm border border-amber-300/50"
               title={`${currentUser.name_ar} (${badge.label})`}
             >
               {currentUser.name_ar ? currentUser.name_ar.charAt(0) : 'M'}
@@ -147,13 +184,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Main Navigation */}
+      {/* Main Role-Specific Navigation */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         <div className="text-[10px] font-bold text-stone-400 px-3 mb-2 uppercase tracking-wider">
-          {!collapsed && t.learningPortals}
+          {!collapsed && (
+            currentUser.role === 'admin'
+              ? (language === 'ha' ? 'Hukumar Gudanarwa' : 'Executive Console')
+              : currentUser.role === 'teacher'
+              ? (language === 'ha' ? 'Kula da Karatu' : 'Faculty Workspace')
+              : (language === 'ha' ? 'Sashen Karatun Dalibi' : 'Student Learning')
+          )}
         </div>
 
-        {navItems.map((item) => {
+        {currentNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id;
           return (
@@ -163,128 +206,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                 isActive
                   ? 'bg-emerald-800 text-white shadow-xs font-bold'
-                  : 'text-stone-700 hover:bg-stone-100/80 hover:text-stone-900'
+                  : 'text-stone-700 hover:bg-stone-100 hover:text-stone-900'
               }`}
               title={item.label}
             >
               <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-amber-300' : 'text-stone-500'}`} />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span className="truncate">{item.label}</span>}
             </button>
           );
         })}
-
-        {/* Role Workspace Navigation */}
-        {isTeacherOrAdmin && (
-          <>
-            <div className="pt-4 pb-1 text-[10px] font-bold text-stone-400 px-3 uppercase tracking-wider">
-              {!collapsed && t.staffTools}
-            </div>
-
-            <button
-              onClick={() => onNavigate('teacher_workspace')}
-              className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                currentView === 'teacher_workspace'
-                  ? 'bg-emerald-800 text-white shadow-xs font-bold'
-                  : 'text-stone-700 hover:bg-emerald-50 hover:text-emerald-950'
-              }`}
-              title={t.navTeacher}
-            >
-              <GraduationCap className={`w-5 h-5 shrink-0 ${currentView === 'teacher_workspace' ? 'text-amber-300' : 'text-emerald-700'}`} />
-              {!collapsed && (
-                <div className="flex items-center justify-between w-full">
-                  <span>{t.navTeacher}</span>
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
-                    Marking
-                  </span>
-                </div>
-              )}
-            </button>
-          </>
-        )}
-
-        {isAdmin && (
-          <>
-            <div className="pt-3 pb-1 text-[10px] font-bold text-stone-400 px-3 uppercase tracking-wider">
-              {!collapsed && t.adminGovernance}
-            </div>
-
-            <button
-              onClick={() => onNavigate('admin_console')}
-              className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                currentView === 'admin_console'
-                  ? 'bg-emerald-800 text-white shadow-xs font-bold'
-                  : 'text-stone-700 hover:bg-amber-50 hover:text-amber-950'
-              }`}
-              title={t.navAdmin}
-            >
-              <Shield className={`w-5 h-5 shrink-0 ${currentView === 'admin_console' ? 'text-amber-300' : 'text-amber-700'}`} />
-              {!collapsed && (
-                <div className="flex items-center justify-between w-full">
-                  <span>{t.navAdmin}</span>
-                  <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">
-                    Admin
-                  </span>
-                </div>
-              )}
-            </button>
-          </>
-        )}
       </div>
 
-      {/* Bottom Switcher & Logout */}
+      {/* Bottom Switch Account & Logout */}
       <div className="p-3 border-t border-stone-200/80 space-y-2 bg-stone-50/40">
         {!collapsed ? (
-          <div className="p-2.5 bg-white border border-stone-200 rounded-xl shadow-2xs">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold text-stone-500 flex items-center gap-1">
-                <UserCheck className="w-3.5 h-3.5 text-emerald-800" /> {t.quickPersonaSwitch}
-              </span>
-              <button
-                onClick={onOpenAuthModal}
-                className="text-[10px] text-emerald-800 hover:underline font-bold"
-              >
-                {t.loginBtn}
-              </button>
+          <div className="p-2.5 bg-white border border-stone-200 rounded-xl shadow-2xs space-y-2">
+            <div className="text-[10px] text-stone-500 leading-tight">
+              {currentUser.role === 'student' ? (
+                <span>Asusun dalibi mai lambar: <strong className="font-mono text-emerald-800">{currentUser.institution_code || `MIF-${currentUser.sn}`}</strong></span>
+              ) : currentUser.role === 'teacher' ? (
+                <span>Asusun malami mai koyarwa</span>
+              ) : (
+                <span>Ofishin shugaban makaranta</span>
+              )}
             </div>
-            <div className="grid grid-cols-3 gap-1">
-              <button
-                onClick={() => onSwitchPersona('student')}
-                className={`py-1 text-[10px] font-bold rounded transition-colors ${
-                  currentUser.role === 'student'
-                    ? 'bg-emerald-700 text-white'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                {language === 'ha' ? 'Dalibi' : language === 'en' ? 'Student' : 'طالب'}
-              </button>
-              <button
-                onClick={() => onSwitchPersona('teacher')}
-                className={`py-1 text-[10px] font-bold rounded transition-colors ${
-                  currentUser.role === 'teacher'
-                    ? 'bg-emerald-700 text-white'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                {language === 'ha' ? 'Malami' : language === 'en' ? 'Teacher' : 'معلّم'}
-              </button>
-              <button
-                onClick={() => onSwitchPersona('admin')}
-                className={`py-1 text-[10px] font-bold rounded transition-colors ${
-                  currentUser.role === 'admin'
-                    ? 'bg-emerald-700 text-white'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                {language === 'ha' ? 'Darakta' : language === 'en' ? 'Admin' : 'مشرف'}
-              </button>
-            </div>
+
+            <button
+              onClick={onOpenAuthModal}
+              className="w-full py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 border border-emerald-200"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>{language === 'ha' ? 'Canza Asusu (Switch / Log in)' : 'Switch Account / Log in'}</span>
+            </button>
           </div>
         ) : (
           <div className="flex justify-center">
             <button
               onClick={onOpenAuthModal}
               className="p-2 text-stone-500 hover:text-stone-900 rounded-lg hover:bg-stone-100"
-              title={t.loginBtn}
+              title="Switch Account"
             >
               <UserCheck className="w-5 h-5" />
             </button>

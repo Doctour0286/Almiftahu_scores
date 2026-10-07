@@ -25,7 +25,12 @@ function LmsContent() {
   const [progress, setProgress] = useState(store.getStudentProgress());
   const [certificates, setCertificates] = useState(store.getCertificates());
 
-  const [currentView, setCurrentView] = useState<string>('home');
+  const [currentView, setCurrentView] = useState<string>(() => {
+    const user = store.getCurrentUser();
+    if (user.role === 'admin') return 'admin_console';
+    if (user.role === 'teacher') return 'teacher_workspace';
+    return 'home';
+  });
   const [selectedLessonId, setSelectedLessonId] = useState<string | undefined>(undefined);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMoreModalOpen, setIsMoreModalOpen] = useState(false);
@@ -49,6 +54,10 @@ function LmsContent() {
   };
 
   const handleNavigate = (view: string, lessonId?: string) => {
+    if (currentUser.role === 'student' && (view === 'admin_console' || view === 'teacher_workspace')) {
+      setCurrentView('home');
+      return;
+    }
     setCurrentView(view);
     if (lessonId) {
       setSelectedLessonId(lessonId);
@@ -66,7 +75,11 @@ function LmsContent() {
     const updated = store.getCurrentUser();
     setCurrentUser(updated);
 
-    if (role === 'student' && (currentView === 'admin_console' || currentView === 'teacher_workspace')) {
+    if (role === 'admin') {
+      setCurrentView('admin_console');
+    } else if (role === 'teacher') {
+      setCurrentView('teacher_workspace');
+    } else {
       setCurrentView('home');
     }
   };
@@ -188,6 +201,7 @@ function LmsContent() {
         currentView={currentView}
         onNavigate={(view) => handleNavigate(view)}
         onOpenMoreMenu={() => setIsMoreModalOpen(true)}
+        currentUser={currentUser}
       />
 
       {/* Mobile More Sheet */}
@@ -209,6 +223,13 @@ function LmsContent() {
         onLoginSuccess={(user) => {
           setCurrentUser(user);
           setIsAuthModalOpen(false);
+          if (user.role === 'admin') {
+            setCurrentView('admin_console');
+          } else if (user.role === 'teacher') {
+            setCurrentView('teacher_workspace');
+          } else {
+            setCurrentView('home');
+          }
         }}
       />
     </div>

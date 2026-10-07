@@ -37,7 +37,7 @@ export const TeacherWorkspaceView: React.FC<TeacherWorkspaceViewProps> = ({
   onCourseSelect
 }) => {
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'marking' | 'audio' | 'gradebook'>('marking');
+  const [activeTab, setActiveTab] = useState<'marking' | 'audio' | 'gradebook'>('audio');
 
   // Exam Essay attempts
   const [attempts, setAttempts] = useState<ExamAttempt[]>(store.getAttempts());
@@ -55,7 +55,7 @@ export const TeacherWorkspaceView: React.FC<TeacherWorkspaceViewProps> = ({
   const [audioFilterStatus, setAudioFilterStatus] = useState<string>('all');
 
   // Gradebook state
-  const [gradebookCourseId, setGradebookCourseId] = useState<string>(courses[0]?.id || 'course_aqeedah');
+  const [gradebookCourseId, setGradebookCourseId] = useState<string>(courses[0]?.id || 'e7e08a6f-2d32-4d45-8720-c1f98e58563b');
   const [gradebookSearch, setGradebookSearch] = useState<string>('');
 
   const [successFeedback, setSuccessFeedback] = useState<string | null>(null);

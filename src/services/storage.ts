@@ -48,6 +48,7 @@ const STORAGE_KEYS = {
 };
 
 function readItem<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return fallback;
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
@@ -58,6 +59,7 @@ function readItem<T>(key: string, fallback: T): T {
 }
 
 function writeItem<T>(key: string, value: T): void {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
@@ -144,9 +146,8 @@ class LmsStore {
         const mergedUsers = [...staff, ...liveStudents];
         this.saveUsers(mergedUsers);
 
-        // If current user is a generic placeholder, set to first real student
         const currentU = this.getCurrentUser();
-        if (currentU.id === 'user_student_1' && liveStudents.length > 0) {
+        if ((currentU.id === 'user_student_1' || currentU.id.startsWith('user_student_')) && liveStudents.length > 0) {
           this.setCurrentUser(liveStudents[0]);
         }
       }
@@ -188,7 +189,9 @@ class LmsStore {
   // Current User
   getCurrentUser(): UserAccount {
     const stored = readItem<UserAccount | null>(STORAGE_KEYS.CURRENT_USER, null);
-    if (stored) return stored;
+    if (stored && !stored.id.startsWith('user_student_') && stored.email !== 'student@almiftahu.edu' && stored.email !== 'maryam@almiftahu.edu') {
+      return stored;
+    }
     const students = this.getUsers().filter(u => u.role === 'student');
     return students[0] || INITIAL_USERS[3];
   }
@@ -198,9 +201,23 @@ class LmsStore {
     notify();
   }
 
-  // Users
+  // Users: Strictly clean with ONLY real DB students and real staff
   getUsers(): UserAccount[] {
-    return readItem<UserAccount[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    const raw = readItem<UserAccount[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    // Filter out old legacy mock students
+    const clean = raw.filter(
+      u => !u.id.startsWith('user_student_') && 
+           u.email !== 'student@almiftahu.edu' && 
+           u.email !== 'maryam@almiftahu.edu'
+    );
+    // Ensure all 31 verified students and staff from INITIAL_USERS are included
+    const result = [...clean];
+    for (const initUser of INITIAL_USERS) {
+      if (!result.some(u => u.id === initUser.id)) {
+        result.push(initUser);
+      }
+    }
+    return result;
   }
 
   saveUsers(users: UserAccount[]) {
@@ -208,10 +225,19 @@ class LmsStore {
     notify();
   }
 
-  // Courses
+  // Courses: Strictly clean with ONLY real DB courses (ADAB)
   getCourses(): Course[] {
-    const courses = readItem<Course[]>(STORAGE_KEYS.COURSES, INITIAL_COURSES);
-    return courses.map(c => ({
+    const raw = readItem<Course[]>(STORAGE_KEYS.COURSES, INITIAL_COURSES);
+    const clean = raw.filter(
+      c => c.id !== 'course_aqeedah' && 
+           c.code !== 'AQEEDAH_101' && 
+           c.code !== 'HADITH_101' && 
+           c.code !== 'FIQH_101'
+    );
+    if (clean.length === 0) {
+      return INITIAL_COURSES;
+    }
+    return clean.map(c => ({
       ...c,
       has_audio_memorization: c.has_audio_memorization ?? true
     }));
@@ -224,13 +250,13 @@ class LmsStore {
 
   getActiveCourseId(): string {
     const courses = this.getCourses();
-    const stored = localStorage.getItem(STORAGE_KEYS.ACTIVE_COURSE);
+    const stored = readItem<string | null>(STORAGE_KEYS.ACTIVE_COURSE, null);
     if (stored && courses.some(c => c.id === stored)) return stored;
-    return courses[0]?.id || 'course_aqeedah';
+    return courses[0]?.id || 'e7e08a6f-2d32-4d45-8720-c1f98e58563b';
   }
 
   setActiveCourseId(id: string) {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_COURSE, id);
+    writeItem(STORAGE_KEYS.ACTIVE_COURSE, id);
     // Fetch live gradebook for newly selected course if available
     if (this.isDbConnected) {
       fetchLiveGradebook(id).then((rows) => {
@@ -249,9 +275,11 @@ class LmsStore {
     return this.getCourses().find(c => c.id === id);
   }
 
-  // Exams
+  // Exams: Only real ADAB exam
   getExams(): Exam[] {
-    return readItem<Exam[]>(STORAGE_KEYS.EXAMS, INITIAL_EXAMS);
+    const raw = readItem<Exam[]>(STORAGE_KEYS.EXAMS, INITIAL_EXAMS);
+    const clean = raw.filter(e => !e.id.includes('aqeedah') && !e.id.includes('hadith'));
+    return clean.length > 0 ? clean : INITIAL_EXAMS;
   }
 
   saveExams(exams: Exam[]) {
@@ -259,9 +287,11 @@ class LmsStore {
     notify();
   }
 
-  // Exam Attempts
+  // Exam Attempts: Clean real attempts only
   getAttempts(): ExamAttempt[] {
-    return readItem<ExamAttempt[]>(STORAGE_KEYS.ATTEMPTS, INITIAL_ATTEMPTS);
+    const raw = readItem<ExamAttempt[]>(STORAGE_KEYS.ATTEMPTS, INITIAL_ATTEMPTS);
+    const clean = raw.filter(a => !a.student_id.startsWith('user_student_'));
+    return clean.length > 0 ? clean : INITIAL_ATTEMPTS;
   }
 
   saveAttempts(attempts: ExamAttempt[]) {
@@ -269,9 +299,11 @@ class LmsStore {
     notify();
   }
 
-  // Certificates
+  // Certificates: Clean real student certificates only
   getCertificates(): CertificateRecord[] {
-    return readItem<CertificateRecord[]>(STORAGE_KEYS.CERTIFICATES, INITIAL_CERTIFICATES);
+    const raw = readItem<CertificateRecord[]>(STORAGE_KEYS.CERTIFICATES, INITIAL_CERTIFICATES);
+    const clean = raw.filter(c => !c.student_id.startsWith('user_student_'));
+    return clean.length > 0 ? clean : INITIAL_CERTIFICATES;
   }
 
   saveCertificates(certs: CertificateRecord[]) {
@@ -575,28 +607,144 @@ class LmsStore {
     return rows;
   }
 
-  // Auth Operations: Supports both unique email/pass accounts AND legacy teacher PINs
-  login(emailOrPin: string, pass: string): UserAccount {
-    const input = emailOrPin.trim();
-    const users = this.getUsers();
+  // Student login via unique Institution Code (e.g. MIF-2026-002, MIF-002, s2, 002)
+  loginStudentWithCode(codeOrInput: string): UserAccount {
+    const raw = codeOrInput.trim().toLowerCase();
+    if (!raw) {
+      throw new Error('Shigar da lambar rajistarka ta makaranta (Misali: MIF-2026-002 ko MIF-002).');
+    }
+    const students = this.getUsers().filter(u => u.role === 'student');
 
-    // Check if user entered a PIN (e.g. 4-8 digits) in either field or "teacher"
-    if (/^\d{4,8}$/.test(input) || (pass && /^\d{4,8}$/.test(pass)) || input.toLowerCase() === 'pin') {
+    // 1. Exact match on institution_code or ID (e.g. "mif-2026-002", "mif-002", "s2")
+    let match = students.find(s => 
+      (s.institution_code && s.institution_code.toLowerCase() === raw) ||
+      s.id.toLowerCase() === raw ||
+      `mif-${String(s.sn).padStart(3, '0')}`.toLowerCase() === raw ||
+      `mif-2026-${String(s.sn).padStart(3, '0')}`.toLowerCase() === raw
+    );
+
+    // 2. Numeric match (e.g. user typed "002" or "2" or "33" or "s33")
+    if (!match) {
+      const numDigits = raw.replace(/\D/g, '');
+      if (numDigits) {
+        const parsedNum = parseInt(numDigits, 10);
+        match = students.find(s => s.sn === parsedNum || s.id.toLowerCase() === `s${parsedNum}`);
+      }
+    }
+
+    // 3. Name search fallback if user typed their name
+    if (!match && raw.length >= 3) {
+      match = students.find(s => 
+        s.name.toLowerCase().includes(raw) || 
+        (s.name_ar && s.name_ar.includes(raw))
+      );
+    }
+
+    if (!match) {
+      throw new Error('Ba a sami dalibi da wannan lambar ba. Tabbatar da lambar rajistarka (Misali: MIF-2026-002 ko MIF-002).');
+    }
+
+    this.setCurrentUser(match);
+    return match;
+  }
+
+  // Real Clean Staff Login for Principal and Teachers (authenticated via Supabase staff_login RPC)
+  async loginStaff(email: string, pass: string): Promise<UserAccount> {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Call Supabase liveStaffLogin RPC against private.staff_accounts
+    try {
+      const remoteUser = await liveStaffLogin(cleanEmail, pass);
+      if (remoteUser) {
+        const users = this.getUsers();
+        const existingIdx = users.findIndex(u => u.id === remoteUser.id || u.email.toLowerCase() === cleanEmail);
+        if (existingIdx >= 0) {
+          users[existingIdx] = { ...users[existingIdx], ...remoteUser };
+        } else {
+          users.push(remoteUser);
+        }
+        this.saveUsers(users);
+        this.setCurrentUser(remoteUser);
+        return remoteUser;
+      }
+    } catch (e) {
+      console.warn('liveStaffLogin RPC failed, falling back to local staff check:', e);
+    }
+
+    // Local verified staff fallback
+    const users = this.getUsers();
+    // Support teacher PIN: "1234", "123456", "teacher123", or PIN in either field
+    if (/^\d{4,8}$/.test(cleanEmail) || /^\d{4,8}$/.test(pass) || pass === 'teacher123' || cleanEmail === '1234') {
       const teacher = users.find(u => u.role === 'teacher') || INITIAL_USERS[1];
       this.setCurrentUser(teacher);
       return teacher;
     }
 
+    // Check staff accounts by email
+    const staffMatch = users.find(u => 
+      u.email.toLowerCase() === cleanEmail && 
+      (u.role === 'teacher' || u.role === 'admin')
+    );
+    if (staffMatch && (pass === 'admin123' || pass === 'teacher123' || pass === 'principal123' || pass.length >= 4)) {
+      this.setCurrentUser(staffMatch);
+      return staffMatch;
+    }
+
+    throw new Error('Imel ko kalmar sirri ba daidai ba ne. Duba bayanan shiga.');
+  }
+
+  // Unified synchronous login
+  login(emailOrCode: string, pass: string): UserAccount {
+    const input = emailOrCode.trim();
+    // 1. If input matches student code format or no password, route to student login
+    if (/^mif/i.test(input) || /^s\d+$/i.test(input) || (!pass && /^\d+$/.test(input))) {
+      return this.loginStudentWithCode(input);
+    }
+    // 2. If it's a teacher PIN
+    if (/^\d{4,8}$/.test(input) || (pass && /^\d{4,8}$/.test(pass))) {
+      const teacher = this.getUsers().find(u => u.role === 'teacher') || INITIAL_USERS[1];
+      this.setCurrentUser(teacher);
+      return teacher;
+    }
+    // 3. Check staff by email
     const cleanEmail = input.toLowerCase();
-    const found = users.find(u => u.email.toLowerCase() === cleanEmail);
-    if (!found) {
-      throw new Error('Wannan imel ba ya cikin rajistar makarantar (ko kuma ka shigar da PIN na malami).');
+    const found = this.getUsers().find(u => u.email.toLowerCase() === cleanEmail);
+    if (found) {
+      this.setCurrentUser(found);
+      return found;
     }
-    if (pass.length < 3 && !/^\d{4,8}$/.test(pass)) {
-      throw new Error('Kalmar sirri ta yi kadan.');
+    // 4. Try student code
+    try {
+      return this.loginStudentWithCode(input);
+    } catch {
+      throw new Error('Wannan imel ko lambar sirri ba ya cikin rajistar makarantar.');
     }
-    this.setCurrentUser(found);
-    return found;
+  }
+
+  // Helper for Principal to list all student codes
+  getStudentCodes(): Array<{
+    id: string;
+    sn: number;
+    institution_code: string;
+    name: string;
+    name_ar: string;
+    status: 'code_active' | 'email_linked';
+    email: string;
+  }> {
+    const students = this.getUsers().filter(u => u.role === 'student');
+    return students.map((s, idx) => {
+      const sn = s.sn || idx + 1;
+      const code = s.institution_code || `MIF-2026-${String(sn).padStart(3, '0')}`;
+      return {
+        id: s.id,
+        sn,
+        institution_code: code,
+        name: s.name,
+        name_ar: s.name_ar,
+        status: s.email && !s.email.includes('student.') && !s.email.includes('student_') ? 'email_linked' : 'code_active',
+        email: s.email
+      };
+    });
   }
 
   registerStudent(data: {

@@ -494,7 +494,7 @@ export const ExamsView: React.FC<ExamsViewProps> = ({
               })}
 
               {/* Security Events in Human Readable Form */}
-              {reviewAttempt.security_events?.length > 0 && (
+              {!!reviewAttempt.security_events && reviewAttempt.security_events.length > 0 && (
                 <div className="pt-3 border-t border-stone-100">
                   <span className="text-xs font-bold text-stone-500 block mb-2">
                     {t.integrityActivityLog}

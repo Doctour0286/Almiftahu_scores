@@ -1,27 +1,46 @@
-import React from 'react';
-import { Home, Calendar, BookOpen, Menu } from 'lucide-react';
+import { Home, Calendar, Headphones, FileCheck, Award, GraduationCap, Shield, Menu } from 'lucide-react';
+import { UserAccount } from '../../types/lms';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 interface BottomNavProps {
   currentView: string;
   onNavigate: (view: string) => void;
   onOpenMoreMenu: () => void;
+  currentUser?: UserAccount;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   currentView,
   onNavigate,
-  onOpenMoreMenu
+  onOpenMoreMenu,
+  currentUser
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  const tabs = [
-    { id: 'home', label: t.navHome, icon: Home },
-    { id: 'schedule', label: t.navSchedule, icon: Calendar },
-    { id: 'programs', label: t.navPrograms, icon: BookOpen },
-  ];
+  const getRoleTabs = () => {
+    if (currentUser?.role === 'admin') {
+      return [
+        { id: 'admin_console', label: language === 'ha' ? 'Shugaba' : 'Console', icon: Shield },
+        { id: 'teacher_workspace', label: language === 'ha' ? 'Maki' : 'Grading', icon: GraduationCap },
+        { id: 'classroom', label: language === 'ha' ? 'Darussa' : 'Lessons', icon: Headphones },
+      ];
+    }
+    if (currentUser?.role === 'teacher') {
+      return [
+        { id: 'teacher_workspace', label: language === 'ha' ? 'Zaure' : 'Review', icon: GraduationCap },
+        { id: 'classroom', label: language === 'ha' ? 'Darussa' : 'Lessons', icon: Headphones },
+        { id: 'certificates', label: language === 'ha' ? 'Shahada' : 'Certs', icon: Award },
+      ];
+    }
+    return [
+      { id: 'home', label: language === 'ha' ? 'Shafi' : 'Home', icon: Home },
+      { id: 'classroom', label: language === 'ha' ? 'Darussa' : 'Lessons', icon: Headphones },
+      { id: 'exams', label: language === 'ha' ? 'Jarabawa' : 'Exams', icon: FileCheck },
+    ];
+  };
 
-  const isMoreActive = !['home', 'schedule', 'programs'].includes(currentView);
+  const tabs = getRoleTabs();
+  const isMoreActive = !tabs.map(t => t.id).includes(currentView);
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-stone-200/90 z-40 px-2 py-1 shadow-lg">

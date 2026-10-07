@@ -177,62 +177,24 @@ export const MobileMoreModal: React.FC<MobileMoreModalProps> = ({
         </div>
 
         {/* Quick persona switcher */}
-        <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-stone-700">
-            <span className="flex items-center gap-1.5">
-              <UserCheck className="w-4 h-4 text-emerald-800" /> {t.quickPersonaSwitch}:
-            </span>
-            <button
-              onClick={() => {
-                onClose();
-                onOpenAuthModal();
-              }}
-              className="text-emerald-800 underline font-bold"
-            >
-              {t.loginWithOtherAccount}
-            </button>
+        <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+          <div className="text-xs text-stone-600">
+            {currentUser.role === 'student' ? (
+              <span>Lambar shigar dalibi: <strong className="font-mono text-emerald-800">{currentUser.institution_code || `MIF-${currentUser.sn}`}</strong></span>
+            ) : (
+              <span>Asusun jami'in makaranta na asali</span>
+            )}
           </div>
-          <div className="grid grid-cols-3 gap-1">
-            <button
-              onClick={() => {
-                onSwitchPersona('student');
-                onClose();
-              }}
-              className={`py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                currentUser.role === 'student'
-                  ? 'bg-emerald-800 text-white'
-                  : 'bg-white text-stone-700 border border-stone-200'
-              }`}
-            >
-              {language === 'ha' ? 'Dalibi' : language === 'en' ? 'Student' : 'طالب'}
-            </button>
-            <button
-              onClick={() => {
-                onSwitchPersona('teacher');
-                onClose();
-              }}
-              className={`py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                currentUser.role === 'teacher'
-                  ? 'bg-emerald-800 text-white'
-                  : 'bg-white text-stone-700 border border-stone-200'
-              }`}
-            >
-              {language === 'ha' ? 'Malami' : language === 'en' ? 'Teacher' : 'معلّم'}
-            </button>
-            <button
-              onClick={() => {
-                onSwitchPersona('admin');
-                onClose();
-              }}
-              className={`py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                currentUser.role === 'admin'
-                  ? 'bg-emerald-800 text-white'
-                  : 'bg-white text-stone-700 border border-stone-200'
-              }`}
-            >
-              {language === 'ha' ? 'Darakta' : language === 'en' ? 'Admin' : 'مشرف'}
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              onClose();
+              onOpenAuthModal();
+            }}
+            className="w-full py-2 px-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>{language === 'ha' ? 'Canza Asusu / Shiga da Wani Asusu' : 'Switch Account / Log In'}</span>
+          </button>
         </div>
 
         <button

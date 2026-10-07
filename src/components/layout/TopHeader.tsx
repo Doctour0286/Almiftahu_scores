@@ -311,15 +311,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             className="flex items-center gap-2 p-1.5 px-2 bg-stone-50 hover:bg-stone-100 border border-stone-200/90 rounded-xl transition-all shadow-2xs"
           >
             <div className="text-right hidden sm:block">
-              <span className="text-xs font-bold text-stone-900 block leading-tight truncate max-w-[120px]">
+              <span className="text-xs font-bold text-stone-900 block leading-tight truncate max-w-[140px]">
                 {currentUser.name_ar || currentUser.name}
               </span>
-              <span className="text-[10px] text-emerald-800 font-medium block">
-                {currentUser.role === 'admin'
-                  ? t.roleAdmin
-                  : currentUser.role === 'teacher'
-                  ? t.roleTeacher
-                  : t.roleStudent}
+              <span className="text-[10px] font-bold block truncate max-w-[140px]">
+                {currentUser.role === 'admin' ? (
+                  <span className="text-amber-900 font-semibold">{language === 'ha' ? 'Shugaban Makaranta' : 'Principal / Dean'}</span>
+                ) : currentUser.role === 'teacher' ? (
+                  <span className="text-emerald-800 font-semibold">{language === 'ha' ? 'Malami Mai Koyarwa' : 'Instructor'}</span>
+                ) : (
+                  <span className="text-amber-800 font-mono font-bold">{currentUser.institution_code || `MIF-2026-${String(currentUser.sn || 1).padStart(3, '0')}`}</span>
+                )}
               </span>
             </div>
             <div className="w-7 h-7 rounded-lg bg-emerald-800 text-amber-200 flex items-center justify-center font-bold text-xs shrink-0">
