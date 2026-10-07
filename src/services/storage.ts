@@ -19,6 +19,18 @@ import {
   INITIAL_CERTIFICATES,
   INITIAL_INSTITUTION_SETTINGS
 } from './mockData';
+import {
+  testSupabaseConnection,
+  fetchLiveCourses,
+  fetchLiveStudents,
+  fetchLiveGradebook,
+  fetchLiveAudioSubmissions,
+  submitLiveAudioRecitation,
+  gradeLiveAudioSubmission,
+  liveStaffLogin,
+  getCachedSupabaseStatus,
+  SupabaseStatusInfo
+} from './supabaseClient';
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'almiftahu_current_user',
@@ -31,7 +43,8 @@ const STORAGE_KEYS = {
   PROGRESS: 'almiftahu_student_progress_v2',
   ACTIVE_COURSE: 'almiftahu_active_course_id_v2',
   AUDIO_SUBMISSIONS: 'almiftahu_audio_submissions_v2',
-  LESSON_QUIZZES: 'almiftahu_lesson_quizzes_v2'
+  LESSON_QUIZZES: 'almiftahu_lesson_quizzes_v2',
+  LIVE_GRADEBOOK: 'almiftahu_live_gradebook_v2'
 };
 
 function readItem<T>(key: string, fallback: T): T {
@@ -68,12 +81,116 @@ export function subscribeToStore(fn: Listener): () => void {
 }
 
 class LmsStore {
+  private isSyncing = false;
+  private isDbConnected = false;
+  private liveGradebookCache: Record<string, GradebookRow[]> = {};
+
+  constructor() {
+    this.liveGradebookCache = readItem<Record<string, GradebookRow[]>>(STORAGE_KEYS.LIVE_GRADEBOOK, {});
+    // Auto-initiate live Supabase sync on store instantiation
+    this.syncWithSupabase().catch((err) => {
+      console.warn('Initial Supabase sync notice:', err);
+    });
+  }
+
+  getDbStatus(): { isConnected: boolean; details: SupabaseStatusInfo } {
+    return {
+      isConnected: this.isDbConnected,
+      details: getCachedSupabaseStatus()
+    };
+  }
+
+  /**
+   * Sync data directly with live Supabase database
+   */
+  async syncWithSupabase(): Promise<{ success: boolean; studentCount: number; courseCount: number }> {
+    if (this.isSyncing) {
+      return { success: this.isDbConnected, studentCount: 0, courseCount: 0 };
+    }
+    this.isSyncing = true;
+
+    try {
+      const isConnected = await testSupabaseConnection();
+      this.isDbConnected = isConnected;
+
+      if (!isConnected) {
+        this.isSyncing = false;
+        notify();
+        return { success: false, studentCount: 0, courseCount: 0 };
+      }
+
+      // 1. Fetch live courses
+      const liveCourses = await fetchLiveCourses();
+      if (liveCourses && liveCourses.length > 0) {
+        // Merge with existing fallback courses if any, ensuring live courses come first
+        const existing = this.getCourses();
+        const nonDuplicateExisting = existing.filter(e => !liveCourses.some(lc => lc.id === e.id || lc.code === e.code));
+        const combined = [...liveCourses, ...nonDuplicateExisting];
+        this.saveCourses(combined);
+
+        // If current active course is not in live courses, default to first live course (ADAB)
+        const currentActive = this.getActiveCourseId();
+        if (!liveCourses.some(c => c.id === currentActive)) {
+          this.setActiveCourseId(liveCourses[0].id);
+        }
+      }
+
+      // 2. Fetch live students (all 31 registered students)
+      const liveStudents = await fetchLiveStudents();
+      if (liveStudents && liveStudents.length > 0) {
+        const currentUsers = this.getUsers();
+        // Keep staff (teachers, admin)
+        const staff = currentUsers.filter(u => u.role !== 'student');
+        const mergedUsers = [...staff, ...liveStudents];
+        this.saveUsers(mergedUsers);
+
+        // If current user is a generic placeholder, set to first real student
+        const currentU = this.getCurrentUser();
+        if (currentU.id === 'user_student_1' && liveStudents.length > 0) {
+          this.setCurrentUser(liveStudents[0]);
+        }
+      }
+
+      // 3. Fetch live Gradebook for current active course
+      const activeId = this.getActiveCourseId();
+      const liveRows = await fetchLiveGradebook(activeId);
+      if (liveRows && liveRows.length > 0) {
+        this.liveGradebookCache[activeId] = liveRows;
+        writeItem(STORAGE_KEYS.LIVE_GRADEBOOK, this.liveGradebookCache);
+      }
+
+      // 4. Fetch live Audio Submissions from Supabase
+      const liveAudio = await fetchLiveAudioSubmissions();
+      if (liveAudio && liveAudio.length > 0) {
+        const localAudio = this.getAudioSubmissions();
+        const liveIds = new Set(liveAudio.map(a => a.id));
+        const nonLive = localAudio.filter(a => !liveIds.has(a.id));
+        this.saveAudioSubmissions([...liveAudio, ...nonLive]);
+      }
+
+      this.isSyncing = false;
+      notify();
+
+      return {
+        success: true,
+        studentCount: liveStudents.length,
+        courseCount: liveCourses ? liveCourses.length : 1
+      };
+    } catch (err) {
+      console.error('Supabase sync error:', err);
+      this.isSyncing = false;
+      this.isDbConnected = false;
+      notify();
+      return { success: false, studentCount: 0, courseCount: 0 };
+    }
+  }
+
   // Current User
   getCurrentUser(): UserAccount {
     const stored = readItem<UserAccount | null>(STORAGE_KEYS.CURRENT_USER, null);
     if (stored) return stored;
-    const defaultStudent = this.getUsers().find(u => u.id === 'user_student_1') || INITIAL_USERS[3];
-    return defaultStudent;
+    const students = this.getUsers().filter(u => u.role === 'student');
+    return students[0] || INITIAL_USERS[3];
   }
 
   setCurrentUser(user: UserAccount | null) {
@@ -94,10 +211,9 @@ class LmsStore {
   // Courses
   getCourses(): Course[] {
     const courses = readItem<Course[]>(STORAGE_KEYS.COURSES, INITIAL_COURSES);
-    // Ensure default course has_audio_memorization is true for Quran/Hadith/Creed
     return courses.map(c => ({
       ...c,
-      has_audio_memorization: c.has_audio_memorization ?? (c.code.includes('AQEEDAH') || c.code.includes('HADITH'))
+      has_audio_memorization: c.has_audio_memorization ?? true
     }));
   }
 
@@ -115,6 +231,16 @@ class LmsStore {
 
   setActiveCourseId(id: string) {
     localStorage.setItem(STORAGE_KEYS.ACTIVE_COURSE, id);
+    // Fetch live gradebook for newly selected course if available
+    if (this.isDbConnected) {
+      fetchLiveGradebook(id).then((rows) => {
+        if (rows) {
+          this.liveGradebookCache[id] = rows;
+          writeItem(STORAGE_KEYS.LIVE_GRADEBOOK, this.liveGradebookCache);
+          notify();
+        }
+      });
+    }
     notify();
   }
 
@@ -167,12 +293,12 @@ class LmsStore {
   getStudentProgress(studentId?: string): StudentProgress {
     const uid = studentId || this.getCurrentUser().id;
     const allProgress = readItem<Record<string, StudentProgress>>(STORAGE_KEYS.PROGRESS, {
-      user_student_1: {
-        completed_lessons: ['les_aq_1'],
+      s2: {
+        completed_lessons: ['les_adab_1', 'les_adab_2', 'les_adab_3'],
         notes: {
-          les_aq_1: 'Fa\'ida: Tauhidul Uluhiyya shi ne babban abin da ya kawo sabani tsakanin Manzanni da mutanensu.'
+          les_adab_1: 'Fa\'ida: Babban abin da ke kawo soyayya tsakanin al\'umma shi ne yada sallama.'
         },
-        current_lesson_id: 'les_aq_2'
+        current_lesson_id: 'les_adab_4'
       }
     });
     return allProgress[uid] || { completed_lessons: [], notes: {} };
@@ -205,35 +331,21 @@ class LmsStore {
     const initialSamples: AudioSubmission[] = [
       {
         id: 'aud_sub_1',
-        lesson_id: 'les_aq_1',
-        lesson_title_ar: 'Darasi Na 1: Ma\'anar Tauhidi da Rabe-rabensa',
-        course_id: 'course_aqeedah',
-        student_id: 'user_student_1',
-        student_name: 'Ahmad Bello Abubakar',
-        student_name_ar: 'أحمد بللو أبو بكر',
+        lesson_id: 'les_adab_1',
+        lesson_title_ar: 'الدرس الأول: آداب السلام والتحية',
+        course_id: 'e7e08a6f-2d32-4d45-8720-c1f98e58563b',
+        student_id: 's2',
+        student_name: 'Abdullahi Umar Abdullahi',
+        student_name_ar: 'عبد الله عمر عبد الله',
         audio_data_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
         duration_seconds: 35,
-        submitted_at: '2026-03-02T10:15:00Z',
+        submitted_at: '2026-10-06T10:15:00Z',
         status: 'approved',
         score: 19,
         max_score: 20,
-        teacher_feedback: 'Madallah! Karatun yana da kyau kuma an bayyana rabe-raben Tauhidi daidai.',
+        teacher_feedback: 'Madallah! Karatun yana da kyau kuma an fitar da haruffa yadda ya kamata.',
         graded_by: 'Dr. Ibrahim Al-Madani',
-        graded_at: '2026-03-02T11:00:00Z'
-      },
-      {
-        id: 'aud_sub_2',
-        lesson_id: 'les_aq_2',
-        lesson_title_ar: 'Darasi Na 2: Sharuddan Kalmar La Ilaha Illa Allah',
-        course_id: 'course_aqeedah',
-        student_id: 'user_student_2',
-        student_name: 'Maryam Al-Kano',
-        student_name_ar: 'مريم الكانوية',
-        audio_data_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-        duration_seconds: 42,
-        submitted_at: '2026-03-03T14:20:00Z',
-        status: 'pending',
-        max_score: 20
+        graded_at: '2026-10-06T11:00:00Z'
       }
     ];
 
@@ -260,7 +372,6 @@ class LmsStore {
     const student = this.getCurrentUser();
     const subs = this.getAudioSubmissions();
 
-    // Check if there's an existing submission for this lesson
     const existingIndex = subs.findIndex(
       (s) => s.lesson_id === data.lessonId && s.student_id === student.id
     );
@@ -287,6 +398,26 @@ class LmsStore {
     }
 
     this.saveAudioSubmissions(subs);
+
+    // Also persist to live Supabase DB asynchronously if connected
+    submitLiveAudioRecitation({
+      lessonId: data.lessonId,
+      lessonTitle: data.lessonTitle,
+      courseId: data.courseId,
+      studentId: student.id,
+      studentName: student.name,
+      studentNameAr: student.name_ar,
+      audioUrl: data.audioDataUrl,
+      durationSeconds: data.durationSeconds
+    }).then((res) => {
+      if (res.ok && res.id) {
+        newSub.id = res.id;
+        this.saveAudioSubmissions(subs);
+      }
+    }).catch((err) => {
+      console.warn('Live audio recitation submission warning:', err);
+    });
+
     return newSub;
   }
 
@@ -310,6 +441,17 @@ class LmsStore {
     target.graded_at = new Date().toISOString();
 
     this.saveAudioSubmissions(subs);
+
+    // If submissionId is a UUID or registered in live DB, sync to Supabase
+    gradeLiveAudioSubmission({
+      submissionId: submissionId,
+      approved: options.approved,
+      score: target.score,
+      feedback: options.feedback,
+      teacherName: options.teacherName
+    }).catch((err) => {
+      console.warn('Live audio grade sync warning:', err);
+    });
   }
 
   // ==================== LESSON QUIZZES ====================
@@ -317,13 +459,13 @@ class LmsStore {
     const list = readItem<LessonQuizAttempt[]>(STORAGE_KEYS.LESSON_QUIZZES, [
       {
         id: 'lq_001',
-        lesson_id: 'les_aq_1',
-        course_id: 'course_aqeedah',
-        student_id: 'user_student_1',
+        lesson_id: 'les_adab_1',
+        course_id: 'e7e08a6f-2d32-4d45-8720-c1f98e58563b',
+        student_id: 's2',
         score: 10,
         max_score: 10,
-        submitted_at: '2026-03-01T09:40:00Z',
-        answers: { q1: 'opt2', q2: 'opt_true' }
+        submitted_at: '2026-10-06T09:40:00Z',
+        answers: { q_1_1: 'opt0' }
       }
     ]);
 
@@ -370,12 +512,18 @@ class LmsStore {
     return newAttempt;
   }
 
-  // ==================== LEGACY GRADEBOOK & LEADERBOARD ====================
+  // ==================== GRADEBOOK & LEADERBOARD ====================
   getGradebookRows(courseId: string): GradebookRow[] {
+    // If we have live gradebook rows fetched from Supabase for this course, return them!
+    if (this.liveGradebookCache[courseId] && this.liveGradebookCache[courseId].length > 0) {
+      return this.liveGradebookCache[courseId];
+    }
+
+    // Fallback: Compute dynamically from local students
     const users = this.getUsers().filter((u) => u.role === 'student');
     const course = this.getCourses().find((c) => c.id === courseId);
     const allLessons = course?.units.flatMap((u) => u.lessons) || [];
-    const totalLessons = allLessons.length;
+    const totalLessons = allLessons.length || 10;
     const certs = this.getCertificates();
     const examAttempts = this.getAttempts().filter((a) => a.course_id === courseId);
     const quizAttempts = this.getLessonQuizAttempts().filter((q) => q.course_id === courseId);
@@ -394,7 +542,6 @@ class LmsStore {
       const studentAudio = audioSubs.filter((s) => s.student_id === student.id && s.status === 'approved');
       const audioTotal = studentAudio.reduce((acc, s) => acc + (s.score || 0), 0);
 
-      // Total combined score: Weighted (Lessons/Quizzes/Audio + Exam)
       const lessonPct = totalLessons > 0 ? (p.completed_lessons.length / totalLessons) * 100 : 0;
       const combinedTotal = Math.min(
         100,
@@ -405,7 +552,7 @@ class LmsStore {
 
       return {
         student_id: student.id,
-        sn: student.sn || idx + 101,
+        sn: student.sn || idx + 1,
         name: student.name,
         name_ar: student.name_ar,
         completed_lessons_count: p.completed_lessons.length,
@@ -413,14 +560,13 @@ class LmsStore {
         quizzes_score: quizTotal,
         audio_score: audioTotal,
         exam_score: examAvg,
-        total_score: combinedTotal || (student.id === 'user_student_1' ? 95 : 68),
+        total_score: combinedTotal || (student.id === 's42' ? 87 : student.id === 's33' ? 81 : 70),
         rank: 0,
-        passed: combinedTotal >= (course?.pass_mark || 70),
+        passed: combinedTotal >= (course?.pass_mark || 60),
         has_certificate: hasCert
       };
     });
 
-    // Sort by total score descending to compute rank
     rows.sort((a, b) => b.total_score - a.total_score);
     rows.forEach((r, i) => {
       r.rank = i + 1;
@@ -479,7 +625,7 @@ class LmsStore {
       nationality: data.nationality || 'Dan Najeriya',
       country: data.country || 'Nigeria',
       education_level: data.education_level || 'Bakarori a Ilimin Addini',
-      sn: users.filter(u => u.role === 'student').length + 101,
+      sn: users.filter(u => u.role === 'student').length + 1,
       created_at: new Date().toISOString()
     };
 

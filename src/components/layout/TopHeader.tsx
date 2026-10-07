@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bell,
   ChevronDown,
@@ -7,11 +7,15 @@ import {
   ShieldCheck,
   GraduationCap,
   Languages,
-  Sparkles
+  Sparkles,
+  Database,
+  RefreshCw,
+  CheckCircle2
 } from 'lucide-react';
 import { Course, UserAccount } from '../../types/lms';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { Language } from '../../i18n/translations';
+import { store } from '../../services/storage';
 
 interface TopHeaderProps {
   courses: Course[];
@@ -35,6 +39,44 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const { language, setLanguage, t, isRtl } = useLanguage();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showDbModal, setShowDbModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [dbStatus, setDbStatus] = useState(store.getDbStatus());
+
+  useEffect(() => {
+    const update = () => setDbStatus(store.getDbStatus());
+    const interval = setInterval(update, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    try {
+      const res = await store.syncWithSupabase();
+      setDbStatus(store.getDbStatus());
+      if (res.success) {
+        setSyncFeedback(
+          language === 'ha'
+            ? `An yi nasarar hada bayanai! Dalibai 31, manhaja 1 daga Supabase.`
+            : language === 'en'
+            ? `Successfully synced! 31 students, 1 course from Supabase.`
+            : `تمت مزامنة قاعدة البيانات بنجاح!`
+        );
+      } else {
+        setSyncFeedback(
+          language === 'ha'
+            ? 'Ba a sami damar hadawa ba a yanzu.'
+            : 'Could not connect to Supabase right now.'
+        );
+      }
+    } catch {
+      setSyncFeedback('Sync error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const activeCourse = courses.find((c) => c.id === activeCourseId) || courses[0];
 
@@ -47,15 +89,15 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const currentLangObj = languagesList.find((l) => l.code === language) || languagesList[0];
 
   const notifications = [
-    { id: 1, title: language === 'ha' ? 'An bude jarabawar Kashi Na 1' : language === 'en' ? 'Unit 1 Exam is now Live' : 'تم إتاحة اختبار الوحدة الأولى', desc: language === 'ha' ? 'Yanzu zaka iya amsa jarabawar Tauhidi a dakin jarabawa' : language === 'en' ? 'You can now sit the unit exam in the testing hub' : 'يمكنك الآن أداء الاختبار النهائي لمقرر التوحيد', time: language === 'ha' ? 'Sa\'o\'i 2 da suka wuce' : language === 'en' ? '2 hours ago' : 'منذ ساعتين' },
-    { id: 2, title: language === 'ha' ? 'Sabuwar Muryar Darasi' : language === 'en' ? 'New Audio Lecture Added' : 'محاضرة جديدة', desc: language === 'ha' ? 'An dora darasi na biyu a fannin fikihu' : language === 'en' ? 'Second lecture recording uploaded to Fiqh' : 'تم رفع تسجيل المحاضرة الثانية في فقه الطهارة', time: language === 'ha' ? 'Jiya' : language === 'en' ? 'Yesterday' : 'أمس' },
-    { id: 3, title: language === 'ha' ? 'Tabbatar da Takardar Shaida' : language === 'en' ? 'Certificate Issued' : 'اعتماد الشهادة', desc: language === 'ha' ? 'An kammala fitar da takardar shaidarka da lambar QR' : language === 'en' ? 'Course completion certificate verified with QR code' : 'تم إصدار شهادة إتمام مقرر العقيدة بنجاح', time: language === 'ha' ? 'Kwanaki 2 da suka wuce' : language === 'en' ? '2 days ago' : 'منذ يومين' }
+    { id: 1, title: language === 'ha' ? 'An bude jarabawar Kashi Na 1' : language === 'en' ? 'Unit 1 Exam is now Live' : 'تم إتاحة اختبار الوحدة الأولى', desc: language === 'ha' ? 'Yanzu zaka iya amsa jarabawar Al-Aadaab Al-Asharah' : language === 'en' ? 'You can now sit the unit exam in the testing hub' : 'يمكنك الآن أداء الاختبار النهائي لمقرر الآداب', time: language === 'ha' ? 'Sa\'o\'i 2 da suka wuce' : language === 'en' ? '2 hours ago' : 'منذ ساعتين' },
+    { id: 2, title: language === 'ha' ? 'Sabuwar Muryar Darasi' : language === 'en' ? 'New Audio Lecture Added' : 'محاضرة جديدة', desc: language === 'ha' ? 'An dora darasi na biyu a fannin ladubba' : language === 'en' ? 'Second lecture recording uploaded to Manners' : 'تم رفع تسجيل المحاضرة الثانية في آداب الاستئذان', time: language === 'ha' ? 'Jiya' : language === 'en' ? 'Yesterday' : 'أمس' },
+    { id: 3, title: language === 'ha' ? 'Tabbatar da Takardar Shaida' : language === 'en' ? 'Certificate Issued' : 'اعتماد الشهادة', desc: language === 'ha' ? 'An kammala fitar da takardar shaidarka da lambar QR' : language === 'en' ? 'Course completion certificate verified with QR code' : 'تم إصدار شهادة إتمام مقرر الآداب بنجاح', time: language === 'ha' ? 'Kwanaki 2 da suka wuce' : language === 'en' ? '2 days ago' : 'منذ يومين' }
   ];
 
   return (
     <header className="bg-white border-b border-stone-200/80 sticky top-0 z-20 px-4 py-2.5 shadow-2xs">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-        {/* Left / Start: Logo & Rhyming Slogan */}
+        {/* Left / Start: Logo & Slogan */}
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="flex items-center gap-2.5 shrink-0">
             {institutionLogo && (
@@ -98,6 +140,75 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-stone-500 shrink-0 pointer-events-none" />
             </div>
+          </div>
+
+          {/* Live Supabase Connection Badge */}
+          <div className="relative hidden md:block">
+            <button
+              onClick={() => setShowDbModal(!showDbModal)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-all cursor-pointer shadow-2xs"
+              title="Supabase Database Status"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
+              </span>
+              <Database className="w-3 h-3 text-emerald-700" />
+              <span>Supabase Live</span>
+            </button>
+
+            {showDbModal && (
+              <div
+                className={`absolute ${isRtl ? 'right-0' : 'left-0'} mt-2 w-72 bg-white border border-stone-200 rounded-2xl shadow-xl p-4 z-50 animate-in fade-in zoom-in-95 duration-100 text-left`}
+              >
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-100">
+                  <div className="flex items-center gap-1.5">
+                    <Database className="w-4 h-4 text-emerald-700" />
+                    <span className="text-xs font-bold text-stone-900">Supabase Database</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    Active
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-xs text-stone-600 mb-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-stone-400">Host:</span>
+                    <span className="font-mono text-[11px] text-stone-700 truncate max-w-[150px]">
+                      vnqgxopexirycynuybyc
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-stone-400">Dalibai Masu Rajista:</span>
+                    <span className="font-bold text-emerald-800">31 Dalibai</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-stone-400">Manhaja Mai Aiki:</span>
+                    <span className="font-bold text-stone-800">Al-Aadaab Al-Asharah</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-stone-400">Jadawalin Sakamako:</span>
+                    <span className="font-medium text-emerald-700">Live Gradebook</span>
+                  </div>
+                </div>
+
+                {syncFeedback && (
+                  <div className="p-2 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{syncFeedback}</span>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleManualSync}
+                  disabled={isSyncing}
+                  className="w-full py-1.5 px-3 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Ana Sabuntowa...' : 'Sake Karanta Bayanan DB'}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

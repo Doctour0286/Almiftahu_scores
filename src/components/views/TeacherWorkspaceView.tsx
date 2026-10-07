@@ -17,7 +17,9 @@ import {
   RotateCcw,
   Sparkles,
   Trophy,
-  Filter
+  Filter,
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import { Course, ExamAttempt, UserAccount, AudioSubmission, GradebookRow } from '../../types/lms';
 import { store } from '../../services/storage';
@@ -639,6 +641,17 @@ export const TeacherWorkspaceView: React.FC<TeacherWorkspaceViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  onClick={async () => {
+                    await store.syncWithSupabase();
+                    setAudioSubs(store.getAudioSubmissions());
+                  }}
+                  className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Sake Karanta Bayanai Daga Supabase DB"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Sabunta DB</span>
+                </button>
                 <button
                   onClick={handleExportCsv}
                   className="px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
