@@ -593,8 +593,8 @@ export const INITIAL_COURSES: Course[] = [
           has_memorization: true,
           memorization_prompt: item.promptHa,
           media: {
-            video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+            video_url: '',
+            audio_url: '',
             duration_minutes: 18,
             duration_formatted: '18:30'
           },
@@ -677,48 +677,7 @@ export const INITIAL_EXAMS: Exam[] = [
   }
 ];
 
-export const INITIAL_ATTEMPTS: ExamAttempt[] = [
-  {
-    id: 'att_live_s42',
-    exam_id: 'exam_adab_final',
-    course_id: 'e7e08a6f-2d32-4d45-8720-c1f98e58563b',
-    student_id: 's42',
-    student_name_ar: 'Zainab Sulaiman Falke (زينب سليمان فلكي)',
-    started_at: '2026-10-06T00:15:00Z',
-    submitted_at: '2026-10-06T00:38:00Z',
-    status: 'marked',
-    score_pct: 76.67,
-    total_points: 76.67,
-    max_points: 100,
-    responses: {
-      q_adab_f1: { selected: ['opt1'] },
-      q_adab_f2: { selected: ['opt_false'] },
-      q_adab_f3: { text: 'Yarhamukallah' },
-      q_adab_f4: { text: 'Hadisin Umar bin Abi Salama: Manzon Allah ﷺ ya ce masa: Ya yaro, ka ambaci sunan Allah, ka ci da damanka, kuma ka ci daga abin da ke gabanka.' }
-    },
-    grades: {
-      q_adab_f1: { points: 25, feedback: 'Amsa ce daidai.' },
-      q_adab_f2: { points: 25, feedback: 'Daidai ne, komawa ake yi bayan sau uku.' },
-      q_adab_f3: { points: 25, feedback: 'Masha Allah, daidai.' },
-      q_adab_f4: { points: 1.67, feedback: 'Kyakkyawan bayani da hadisi ingantacce.' }
-    },
-    security_events: []
-  }
-];
+export const INITIAL_ATTEMPTS: ExamAttempt[] = [];
 
-export const INITIAL_CERTIFICATES: CertificateRecord[] = [
-  {
-    id: 'cert_live_s42',
-    certificate_no: 'MIFTAH-2026-0042',
-    student_id: 's42',
-    student_name: 'Zainab Sulaiman Falke',
-    student_name_ar: 'زينب سليمان فلكي',
-    course_id: 'e7e08a6f-2d32-4d45-8720-c1f98e58563b',
-    course_name_ar: 'Al-Aadaab Al-Asharah (الآداب العشرة)',
-    grade_band_ar: 'Jinjina Mai Girma (Very Good / جيد جداً)',
-    final_score: 86.83,
-    issued_at: '2026-10-06',
-    status: 'valid',
-    qr_payload: 'https://almiftahu.edu/verify?cert=MIFTAH-2026-0042&sn=42'
-  }
-];
+export const INITIAL_CERTIFICATES: CertificateRecord[] = [];
+

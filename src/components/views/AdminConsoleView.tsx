@@ -517,7 +517,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                       <input
                         type="text"
                         required
-                        placeholder="TAFSEER_101"
                         value={courseCode}
                         onChange={(e) => setCourseCode(e.target.value)}
                         className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs uppercase font-mono outline-hidden"
@@ -545,7 +544,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                     <input
                       type="text"
                       required
-                      placeholder="Tafsirin Alkur'ani (تفسير القرآن الكريم)"
                       value={courseNameAr}
                       onChange={(e) => setCourseNameAr(e.target.value)}
                       className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden font-bold"
@@ -558,7 +556,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="Quranic Exegesis and Tafseer"
                       value={courseNameEn}
                       onChange={(e) => setCourseNameEn(e.target.value)}
                       className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden"
@@ -571,7 +568,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="Dr. Ibrahim Al-Madani"
                       value={courseInstructorAr}
                       onChange={(e) => setCourseInstructorAr(e.target.value)}
                       className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden"
@@ -586,7 +582,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                       rows={3}
                       value={courseDescAr}
                       onChange={(e) => setCourseDescAr(e.target.value)}
-                      placeholder="Bayanin makasudin darasi da abubuwan da za a koya..."
                       className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden leading-relaxed"
                     />
                   </div>
@@ -735,7 +730,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                       <input
                         type="text"
                         required
-                        placeholder="Sheikh Usman Saleh"
                         value={tNameAr}
                         onChange={(e) => setTNameAr(e.target.value)}
                         className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden font-bold"
@@ -747,7 +741,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                       </label>
                       <input
                         type="text"
-                        placeholder="Sheikh Usman Saleh"
                         value={tNameEn}
                         onChange={(e) => setTNameEn(e.target.value)}
                         className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden"
@@ -763,7 +756,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                       <input
                         type="email"
                         required
-                        placeholder="teacher2@almiftahu.edu"
                         value={tEmail}
                         onChange={(e) => setTEmail(e.target.value)}
                         className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden"
@@ -776,7 +768,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                       <input
                         type="password"
                         required
-                        placeholder="••••••••"
                         value={tPassword}
                         onChange={(e) => setTPassword(e.target.value)}
                         className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden"
@@ -790,7 +781,6 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="Malamin Fikihu da Hadisi"
                       value={tTitleAr}
                       onChange={(e) => setTTitleAr(e.target.value)}
                       className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden"

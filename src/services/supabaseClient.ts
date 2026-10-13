@@ -242,8 +242,8 @@ export async function fetchLiveCourses(): Promise<Course[] | null> {
         has_memorization: c.has_audio_memorization ?? true,
         memorization_prompt: item.promptHa,
         media: {
-          video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-          audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+          video_url: '',
+          audio_url: '',
           duration_minutes: 20 + idx * 2,
           duration_formatted: `${20 + idx * 2}:00`
         },

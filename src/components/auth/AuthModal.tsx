@@ -110,13 +110,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMsg(null);
   };
 
-  const autofillStaff = (staffEmail: string, staffPass: string, role: 'teacher' | 'admin') => {
-    setActorRole(role);
-    setEmail(staffEmail);
-    setPassword(staffPass);
-    setErrorMsg(null);
-  };
-
   const ArrowIcon = isRtl ? ArrowLeft : ArrowRight;
 
   return (
@@ -160,6 +153,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               onClick={() => {
                 setActorRole('student');
                 setErrorMsg(null);
+                setStudentCodeInput('');
               }}
               className={`py-2 px-1 text-xs font-bold rounded-xl transition-all flex flex-col items-center justify-center gap-1 ${
                 actorRole === 'student'
@@ -175,10 +169,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               onClick={() => {
                 setActorRole('teacher');
                 setErrorMsg(null);
-                if (!email) {
-                  setEmail('ibrahim@almiftahu.edu');
-                  setPassword('teacher123');
-                }
+                setEmail('');
+                setPassword('');
               }}
               className={`py-2 px-1 text-xs font-bold rounded-xl transition-all flex flex-col items-center justify-center gap-1 ${
                 actorRole === 'teacher'
@@ -194,10 +186,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               onClick={() => {
                 setActorRole('admin');
                 setErrorMsg(null);
-                if (!email || email.includes('ibrahim') || email.includes('usman')) {
-                  setEmail('admin@almiftahu.edu');
-                  setPassword('admin123');
-                }
+                setEmail('');
+                setPassword('');
               }}
               className={`py-2 px-1 text-xs font-bold rounded-xl transition-all flex flex-col items-center justify-center gap-1 ${
                 actorRole === 'admin'
@@ -259,7 +249,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={studentCodeInput}
                     onChange={(e) => setStudentCodeInput(e.target.value)}
-                    placeholder="MIF-2026-002 ko MIF-002"
                     className="w-full pl-10 pr-3 py-3 bg-stone-50 border border-stone-300 rounded-2xl text-xs font-mono font-bold tracking-wider focus:bg-white focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 outline-hidden transition-all uppercase"
                   />
                   <KeyRound className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5 pointer-events-none" />
@@ -368,7 +357,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ibrahim@almiftahu.edu"
                     className="w-full pl-10 pr-3 py-2.5 bg-stone-50 border border-stone-200 rounded-2xl text-xs focus:bg-white focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 outline-hidden transition-all"
                   />
                   <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5 pointer-events-none" />
@@ -385,7 +373,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
                     className="w-full pl-10 pr-3 py-2.5 bg-stone-50 border border-stone-200 rounded-2xl text-xs focus:bg-white focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 outline-hidden transition-all"
                   />
                   <Lock className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5 pointer-events-none" />
@@ -400,32 +387,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span>{isLoading ? 'Ana Tabbatarwa...' : (language === 'ha' ? 'Shiga Zauren Malami' : 'Enter Teacher Workspace')}</span>
                 <ArrowIcon className="w-4 h-4" />
               </button>
-
-              {/* Verified Teacher Account Shortcuts */}
-              <div className="pt-3 border-t border-stone-100">
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-2 text-center">
-                  {language === 'ha' ? 'Asusun Malamai na Makaranta:' : 'Faculty Accounts:'}
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => autofillStaff('ibrahim@almiftahu.edu', 'teacher123', 'teacher')}
-                    className="p-2 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/60 text-left transition-colors"
-                  >
-                    <div className="text-xs font-bold text-stone-900 truncate">Dr. Ibrahim</div>
-                    <div className="text-[10px] text-emerald-800">Hadith & Creed</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => autofillStaff('usman@almiftahu.edu', 'teacher123', 'teacher')}
-                    className="p-2 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/60 text-left transition-colors"
-                  >
-                    <div className="text-xs font-bold text-stone-900 truncate">Ustadh Usman</div>
-                    <div className="text-[10px] text-emerald-800">Fiqh & Seerah</div>
-                  </button>
-                </div>
-              </div>
             </form>
           )}
 
@@ -460,7 +421,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@almiftahu.edu"
                     className="w-full pl-10 pr-3 py-2.5 bg-stone-50 border border-stone-200 rounded-2xl text-xs focus:bg-white focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 outline-hidden transition-all"
                   />
                   <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5 pointer-events-none" />
@@ -477,7 +437,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
                     className="w-full pl-10 pr-3 py-2.5 bg-stone-50 border border-stone-200 rounded-2xl text-xs focus:bg-white focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 outline-hidden transition-all"
                   />
                   <Lock className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5 pointer-events-none" />
@@ -492,26 +451,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span>{isLoading ? 'Ana Tabbatarwa...' : (language === 'ha' ? 'Shiga Ofishin Shugaba' : 'Enter Principal Console')}</span>
                 <ArrowIcon className="w-4 h-4" />
               </button>
-
-              <div className="pt-3 border-t border-stone-100">
-                <button
-                  type="button"
-                  onClick={() => autofillStaff('admin@almiftahu.edu', 'admin123', 'admin')}
-                  className="w-full p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100/60 text-left transition-colors flex items-center justify-between"
-                >
-                  <div>
-                    <div className="text-xs font-bold text-stone-900">
-                      Sheikh Musa Aminu Muhammad
-                    </div>
-                    <div className="text-[10px] text-amber-800">
-                      Babban Darakta & Mushrif Al-Aam (Dean)
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-amber-900 underline">
-                    {language === 'ha' ? 'Cika Bayani' : 'Autofill'}
-                  </span>
-                </button>
-              </div>
             </form>
           )}
         </div>

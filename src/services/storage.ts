@@ -324,15 +324,7 @@ class LmsStore {
   // Student Progress
   getStudentProgress(studentId?: string): StudentProgress {
     const uid = studentId || this.getCurrentUser().id;
-    const allProgress = readItem<Record<string, StudentProgress>>(STORAGE_KEYS.PROGRESS, {
-      s2: {
-        completed_lessons: ['les_adab_1', 'les_adab_2', 'les_adab_3'],
-        notes: {
-          les_adab_1: 'Fa\'ida: Babban abin da ke kawo soyayya tsakanin al\'umma shi ne yada sallama.'
-        },
-        current_lesson_id: 'les_adab_4'
-      }
-    });
+    const allProgress = readItem<Record<string, StudentProgress>>(STORAGE_KEYS.PROGRESS, {});
     return allProgress[uid] || { completed_lessons: [], notes: {} };
   }
 
@@ -360,28 +352,7 @@ class LmsStore {
 
   // ==================== AUDIO MEMORIZATION SUBMISSIONS ====================
   getAudioSubmissions(courseId?: string, studentId?: string): AudioSubmission[] {
-    const initialSamples: AudioSubmission[] = [
-      {
-        id: 'aud_sub_1',
-        lesson_id: 'les_adab_1',
-        lesson_title_ar: 'الدرس الأول: آداب السلام والتحية',
-        course_id: 'e7e08a6f-2d32-4d45-8720-c1f98e58563b',
-        student_id: 's2',
-        student_name: 'Abdullahi Umar Abdullahi',
-        student_name_ar: 'عبد الله عمر عبد الله',
-        audio_data_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-        duration_seconds: 35,
-        submitted_at: '2026-10-06T10:15:00Z',
-        status: 'approved',
-        score: 19,
-        max_score: 20,
-        teacher_feedback: 'Madallah! Karatun yana da kyau kuma an fitar da haruffa yadda ya kamata.',
-        graded_by: 'Dr. Ibrahim Al-Madani',
-        graded_at: '2026-10-06T11:00:00Z'
-      }
-    ];
-
-    const list = readItem<AudioSubmission[]>(STORAGE_KEYS.AUDIO_SUBMISSIONS, initialSamples);
+    const list = readItem<AudioSubmission[]>(STORAGE_KEYS.AUDIO_SUBMISSIONS, []);
     return list.filter((s) => {
       if (courseId && s.course_id !== courseId) return false;
       if (studentId && s.student_id !== studentId) return false;
@@ -833,8 +804,8 @@ class LmsStore {
               has_memorization: true,
               memorization_prompt: 'Karanta ayar farko ta Suratul Alaq da muryar Tajweedi mai dadi.',
               media: {
-                video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+                video_url: '',
+                audio_url: '',
                 duration_minutes: 20,
                 duration_formatted: '20:00'
               },

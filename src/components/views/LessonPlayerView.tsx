@@ -282,12 +282,29 @@ export const LessonPlayerView: React.FC<LessonPlayerViewProps> = ({
         <div className="relative aspect-video max-h-[460px] w-full bg-black flex items-center justify-center overflow-hidden">
           {mediaMode === 'video' ? (
             <div className="w-full h-full flex flex-col items-center justify-center relative">
-              <video
-                controls
-                src={currentLesson.media.video_url}
-                className="w-full h-full object-contain"
-                poster="https://images.unsplash.com/photo-1542810634-71277d95dcbb?auto=format&fit=crop&w=1200&q=80"
-              />
+              {currentLesson.media.video_url ? (
+                <video
+                  controls
+                  src={currentLesson.media.video_url}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center p-8 space-y-3 max-w-md">
+                  <div className="w-16 h-16 rounded-2xl bg-stone-900 border border-stone-800 flex items-center justify-center text-amber-300">
+                    <Video className="w-8 h-8 text-amber-300" />
+                  </div>
+                  <div>
+                    <h4 className="font-arabic-heading text-white text-base font-bold">
+                      {currentLesson.title_ar}
+                    </h4>
+                    <p className="text-xs text-stone-400 mt-1 leading-relaxed">
+                      {language === 'ha'
+                        ? 'Za a dora bidiyon wannan darasi da zarar an kammala daukar darasin.'
+                        : 'Lecture video will be uploaded by the instructor.'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             /* Audio Podcast Studio Mode */
@@ -296,13 +313,21 @@ export const LessonPlayerView: React.FC<LessonPlayerViewProps> = ({
                 <Headphones className="w-10 h-10 text-amber-300" />
               </div>
               <h3 className="font-arabic-heading text-lg font-bold text-white mb-1">
-                {t.audioStudioTitle}
+                {currentLesson.title_ar}
               </h3>
               <p className="text-xs text-stone-400 max-w-md mb-6">{t.audioStudioDesc}</p>
 
               {/* Audio Controls */}
               <div className="w-full max-w-md bg-stone-900/80 border border-stone-800 rounded-2xl p-4 space-y-4">
-                <audio controls src={currentLesson.media.audio_url} className="w-full rounded-lg" />
+                {currentLesson.media.audio_url ? (
+                  <audio controls src={currentLesson.media.audio_url} className="w-full rounded-lg" />
+                ) : (
+                  <div className="text-xs text-stone-400 bg-stone-950/60 p-3 rounded-xl border border-stone-800/80">
+                    {language === 'ha'
+                      ? 'Za a dora muryar wannan darasi nan ba da dadewa ba.'
+                      : 'Audio recording for this lecture will be uploaded soon.'}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between text-xs text-stone-400 pt-2 border-t border-stone-800">
                   <div className="flex items-center gap-2">
