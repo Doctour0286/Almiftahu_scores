@@ -6,105 +6,51 @@
 
 begin;
 
--- ---------- Setup test course, students, attempt, and token ----------
+-- ---------- Setup: course, students, published exam and two finalized attempts, all through the real RPCs ----------
 do $$
 declare
-  cid uuid;
-  sid1 text := 'test-cert-student-1';
-  sid2 text := 'test-cert-student-2';
-  e1 uuid;
-  e2 uuid;
-  tok text;
-  vid uuid;
-  sec_mcq uuid;
-  qid uuid;
-  att1 uuid;
-  att2 uuid;
-  atok1 text := 'tok-cert-1';
-  atok2 text := 'tok-cert-2';
+  d int; v_cid uuid; v_draft uuid; v_doc jsonb; r jsonb; code text; atok text;
+  t text;
 begin
-  -- 1. Create teacher session
-  tok := 'probe-teacher-token-' || substr(md5(random()::text), 1, 8);
-  insert into private.teacher_sessions (token, expires_at)
-  values (tok, now() + interval '1 hour');
-  perform set_config('t.tok', tok, true);
+  update private.secrets set value = extensions.crypt('p4-test-pin', extensions.gen_salt('bf', 4)) where key = 'teacher_pin_hash';
+  delete from private.auth_throttle;
+  t := public.teacher_login('p4-test-pin')->>'token';
+  assert length(t) = 64, 'test login failed';
+  perform set_config('t.tok', t, true);
 
-  -- 2. Create test course (ADAB-like)
-  insert into public.courses (
-    code, name, name_ar, lesson_mode, eligibility_rule,
-    day_count, day_max, bonus_unit_value, lesson_max,
-    weight_lessons, weight_exam, pass_mark, grade_bands
-  ) values (
-    'TCERT', 'Test Certificate Course', 'دورة الشهادة التجريبية', 'scored', 'all_units',
-    1, 10, 2, 100,
-    50, 50, 60,
-    '[{"min":90,"label":"Excellent","label_ar":"ممتاز"},{"min":75,"label":"Very Good","label_ar":"جيد جداً"},{"min":60,"label":"Pass","label_ar":"مقبول"}]'::jsonb
-  ) returning id into cid;
-  perform set_config('t.cid', cid::text, true);
+  insert into public.courses (code, name, name_ar, eligibility_rule, weight_lessons, weight_exam, pass_mark)
+  values ('TCERT', 'Test Certificate Course', 'دورة الشهادة التجريبية', 'open', 50, 50, 60)
+  returning id into v_cid;
+  perform set_config('t.cid', v_cid::text, true);
 
-  -- 3. Create test students (Student 1 initially has no Arabic name to test AC-4.2)
-  insert into public.students (id, name, name_ar)
-  values (sid1, 'Ibrahim Bello', null)
-  on conflict (id) do update set name = excluded.name;
+  -- Student 1 has NO Arabic name (AC-4.2); student 2 has one
+  r := public.admin_add_student(t, v_cid, 'Ibrahim Bello');
+  perform set_config('t.e1', r->>'enrollment_id', true);
+  r := public.admin_add_student(t, v_cid, 'Zainab Umar', 'زينب عمر');
+  perform set_config('t.e2', r->>'enrollment_id', true);
 
-  insert into public.students (id, name, name_ar)
-  values (sid2, 'Zainab Umar', 'زينب عمر')
-  on conflict (id) do update set name = excluded.name;
+  -- full marks on all 10 lesson units for both students, so the final is 100
+  for i in 1 .. 2 loop
+    for d in 0 .. 9 loop
+      perform public.admin_save_day(t, current_setting('t.e' || i)::uuid, d, 10, 0);
+    end loop;
+  end loop;
 
-  insert into public.enrollments (course_id, student_id, days, bonus_units, active)
-  values (cid, sid1, array[10], array[0], true)
-  returning id into e1;
-  perform set_config('t.e1', e1::text, true);
+  v_draft := (public.admin_create_draft(t, v_cid)->>'id')::uuid;
+  v_doc := $j${"title":"Final Exam","duration_minutes":60,"sections":[
+    {"id":"10000000-0000-0000-0000-0000000000c1","title":"Section A","format":"mcq","weight":100,"questions":[
+      {"id":"20000000-0000-0000-0000-0000000000c1","prompt":"Question 1","note":null,
+       "options":[{"id":"a","text":"Opt A"},{"id":"b","text":"Opt B"}],"key":{"correct_option_ids":["a"]}}]}]}$j$::jsonb;
+  perform public.admin_save_draft(t, v_draft, 0, v_doc);
+  perform public.admin_publish_version(t, v_draft);
 
-  insert into public.enrollments (course_id, student_id, days, bonus_units, active)
-  values (cid, sid2, array[10], array[0], true)
-  returning id into e2;
-  perform set_config('t.e2', e2::text, true);
-
-  -- 4. Publish a simple exam version
-  insert into private.exams (course_id) values (cid);
-  insert into private.exam_versions (
-    exam_id, version_num, status, duration_minutes, title, title_ar, draft_rev
-  ) values (
-    (select id from private.exams where course_id = cid),
-    1, 'live', 60, 'Final Exam', 'الاختبار النهائي', 1
-  ) returning id into vid;
-
-  insert into private.sections (version_id, position, title, format, weight)
-  values (vid, 1, 'Section A', 'mcq', 100)
-  returning id into sec_mcq;
-
-  insert into private.questions (id, section_id, position, prompt, options)
-  values ('30000000-0000-0000-0000-000000000001', sec_mcq, 1, 'Question 1', '[{"id":"a","text":"Opt A"},{"id":"b","text":"Opt B"}]'::jsonb)
-  returning id into qid;
-
-  insert into private.question_keys (question_id, correct_option_ids)
-  values (qid, array['a']);
-
-  -- 5. Student codes
-  insert into private.exam_codes (enrollment_id, code_hash, code_plain, status)
-  values (e1, extensions.crypt('123456', extensions.gen_salt('bf', 4)), '123456', 'active');
-
-  insert into private.exam_codes (enrollment_id, code_hash, code_plain, status)
-  values (e2, extensions.crypt('654321', extensions.gen_salt('bf', 4)), '654321', 'active');
-
-  -- 6. Students sit and submit exams (both score 100% on exam -> Final 100 * 50% + 100 * 50% = 100)
-  insert into private.attempts (id, enrollment_id, version_id, started_at, deadline_at, submitted_at, status, token_hash)
-  values ('40000000-0000-0000-0000-000000000001', e1, vid, now(), now() + interval '1 hour', now(), 'submitted', extensions.crypt(atok1, extensions.gen_salt('bf', 4)))
-  returning id into att1;
-
-  insert into private.attempts (id, enrollment_id, version_id, started_at, deadline_at, submitted_at, status, token_hash)
-  values ('40000000-0000-0000-0000-000000000002', e2, vid, now(), now() + interval '1 hour', now(), 'submitted', extensions.crypt(atok2, extensions.gen_salt('bf', 4)))
-  returning id into att2;
-
-  insert into private.answers (attempt_id, question_id, response, fraction, marked_by)
-  values (att1, qid, '{"selected":["a"]}'::jsonb, 1.0, 'auto');
-
-  insert into private.answers (attempt_id, question_id, response, fraction, marked_by)
-  values (att2, qid, '{"selected":["a"]}'::jsonb, 1.0, 'auto');
-
-  perform private.try_finalize(att1);
-  perform private.try_finalize(att2);
+  for i in 1 .. 2 loop
+    code := public.admin_generate_code(t, current_setting('t.e' || i)::uuid)->>'code';
+    atok := public.exam_start(current_setting('t.e' || i)::uuid, code)->>'attempt_token';
+    perform public.exam_save_answers(atok, jsonb_build_array(jsonb_build_object(
+      'question_id', '20000000-0000-0000-0000-0000000000c1', 'response', jsonb_build_object('selected', jsonb_build_array('a')))));
+    perform public.exam_submit(atok);
+  end loop;
 end $$;
 
 -- ---------- 1. admin_list_certificates ----------
@@ -149,7 +95,7 @@ declare
   c2 record;
 begin
   -- Set Arabic name for student 1
-  update public.students set name_ar = 'إبراهيم بللو' where id = 'test-cert-student-1';
+  update public.students set name_ar = 'إبراهيم بللو' where id = (select student_id from public.enrollments where id = current_setting('t.e1')::uuid);
 
   -- Approve student 1 and student 2
   res := public.admin_approve_certificates(tok, array[e1, e2]);
@@ -187,7 +133,7 @@ begin
   select * into cert from private.certificates where enrollment_id = e1;
 
   -- 4a. get_certificate with student code
-  st_cert := public.get_certificate(e1, '123456');
+  st_cert := public.get_certificate(e1, (select code_plain from private.exam_codes where enrollment_id = e1 and status = 'active'));
   assert (st_cert->>'ok')::boolean, 'get_certificate ok';
   assert st_cert->>'number' = cert.number, 'certificate number matches';
 
@@ -226,7 +172,7 @@ begin
   -- Student cannot fetch revoked certificate
   m := null;
   begin
-    perform public.get_certificate(e1, '123456');
+    perform public.get_certificate(e1, (select code_plain from private.exam_codes where enrollment_id = e1 and status = 'active'));
   exception when others then get stacked diagnostics m = message_text;
   end;
   assert m = 'E_NO_CERTIFICATE', 'get_certificate refuses revoked certificate';

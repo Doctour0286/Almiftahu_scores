@@ -30,12 +30,20 @@ begin
   assert not has_table_privilege('anon', 'public.app_settings', 'SELECT'), 'anon cannot select app_settings';
   assert not exists (select 1 from public.app_settings where key = 'teacher_pin'), 'AC-0.3: plaintext PIN row deleted';
   assert exists (select 1 from private.secrets where key = 'teacher_pin_hash'), 'the hash is kept';
+  -- The anon surface is now checked by NAME, not by a count that goes stale every phase (it had, since Phase 3):
+  --  (a) all 16 Phase-0 RPCs are executable, (b) every other anon-executable public function belongs to a known
+  --  family (admin_* with a leading p_token is asserted in phase5_hardening.test.sql, teacher_*, exam_*, staff_*,
+  --  get_certificate, verify_certificate). Anything else is a finding.
   assert (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
-          where p.prokind = 'f' and has_function_privilege('anon', p.oid, 'EXECUTE'))
-         = 16 + case when to_regprocedure('public.admin_get_exam(text,uuid)') is not null then 7 else 0 end
-              + case when to_regprocedure('public.admin_generate_code(text,uuid)') is not null then 12 else 0 end   -- 021 (5 teacher) + 022 (7 student)
-              + case when to_regprocedure('public.admin_list_codes(text,uuid)') is not null then 1 else 0 end,     -- 023
-         'anon executes exactly the 16 Phase-0 RPCs (+7 exam builder once 011 is applied, +12 code/exam RPCs once 021/022 are applied, +1 admin_list_codes once 023 is applied)';
+          where p.prokind = 'f' and has_function_privilege('anon', p.oid, 'EXECUTE')
+            and p.proname = any (array['teacher_login','teacher_logout','teacher_ping','teacher_change_pin','admin_save_course',
+              'admin_set_course_status','admin_list_roster','admin_list_students_all','admin_add_student','admin_enroll_student',
+              'admin_bulk_seed','admin_update_student','admin_set_active','admin_delete_student','admin_save_day','admin_set_exam_approval']))
+         = 16, 'anon must execute all 16 Phase-0 RPCs';
+  assert not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+          where p.prokind = 'f' and has_function_privilege('anon', p.oid, 'EXECUTE')
+            and p.proname !~ '^(admin_|teacher_|exam_|staff_|get_certificate$|verify_certificate$)'),
+         'anon can execute a public function outside the known families';
   assert not has_schema_privilege('anon', 'private', 'USAGE'), 'no anon usage on private';
 end $$;
 

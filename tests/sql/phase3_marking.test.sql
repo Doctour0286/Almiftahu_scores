@@ -236,6 +236,9 @@ declare
   rev jsonb;
   m text;
 begin
+  -- 8pre. the column default is TRUE (001); this section asserts the OFF behaviour, so set it explicitly
+  update public.courses set reveal_answers = false where id = cid;
+
   -- 8a. exam_get_result returns sections breakdown
   res := public.exam_get_result(e1, code1);
   assert (res->>'ok')::boolean, 'exam_get_result ok';

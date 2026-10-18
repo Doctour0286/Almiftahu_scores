@@ -72,7 +72,7 @@ begin
       select
         coalesce(sum(coalesce(an.fraction, 0) * qv.value), 0),
         coalesce(sum(qv.value), 0),
-        count(*) filter (where s.format = 'essay' and an.fraction is null)
+        count(*) filter (where v_sec.format = 'essay' and an.fraction is null)
       into v_sec_earned, v_sec_max, v_sec_pending
       from private.questions q
       join private.v_question_values qv on qv.version_id = v_att.version_id and qv.question_id = q.id
