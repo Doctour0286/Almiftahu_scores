@@ -221,6 +221,44 @@ let phase4 = false;
   }
   record('PASS', `4. Phase 4 certificate RPCs ${phase4 ? 'are installed and are probed below' : 'are not installed (set PROBE_PHASE4=1 to probe them anyway)'}`);
 }
+// Phase 5 (060): staff accounts + hardened audio. The 050 holes are probed WHETHER OR NOT 060 is installed,
+// because the point is to find them on a database that still has the old 050.
+const PHASE5_CALLS = {
+  admin_list_staff: {},
+  admin_save_staff: { p_id: null, p_data: {} },
+  admin_list_audio_submissions: { p_course_id: null },
+  admin_grade_audio: { p_submission_id: ZERO, p_approved: true, p_score: 1, p_feedback: '' },
+};
+let phase5 = false;
+{
+  const r = await call('POST', '/rpc/admin_list_staff', { body: { p_token: 'probe-garbage' } });
+  phase5 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE5 === '1';
+  if (phase5) Object.assign(adminCalls, PHASE5_CALLS);
+  record('PASS', `4. Phase 5 staff RPCs ${phase5 ? 'are installed and are probed below' : 'are not installed (060 not applied; the legacy-hole probes below still run)'}`);
+
+  // 4a. default credentials must not log in
+  for (const [email, pw] of [['admin@almiftahu.edu', 'admin123'], ['ibrahim@almiftahu.edu', 'teacher123'], ['usman@almiftahu.edu', 'teacher123']]) {
+    const l = await call('POST', '/rpc/staff_login', { body: { p_email: email, p_password: pw } });
+    if (l.status === 200 && l.json && l.json.ok === true) record('FAIL', `4a. staff_login(${email}, default password) is refused`, 'DEFAULT PASSWORD WORKS. Apply 060 and run private.bootstrap_admin.');
+    else record('PASS', `4a. staff_login(${email}, default password) is refused`);
+  }
+  // 4b. the legacy, unauthenticated audio RPCs must be gone (060 drops them). Any 2xx = the hole is open.
+  const legacy = [
+    ['admin_list_audio_submissions', { p_course_id: ZERO }],
+    ['admin_grade_audio', { p_submission_id: ZERO, p_approved: true, p_score: 1, p_feedback: '', p_teacher_name: 'x' }],
+    ['submit_audio_recitation', { p_student_id: 'x', p_student_name: 'x', p_course_id: ZERO, p_lesson_id: 'x', p_lesson_title: 'x', p_audio_url: 'data:,', p_duration: 1 }],
+  ];
+  for (const [fn, args] of legacy) {
+    const l = await call('POST', `/rpc/${fn}`, { body: args });
+    if (l.status >= 200 && l.status < 300) record('FAIL', `4b. legacy ${fn} (no token) is not callable`, `OPEN: ${describe(l)}`);
+    else record('PASS', `4b. legacy ${fn} (no token) is not callable`);
+  }
+  if (phase5) {
+    const l = await call('POST', '/rpc/staff_change_password', { body: { p_token: 'probe-garbage', p_old: 'x', p_new: 'y' } });
+    if (l.status === 400 && l.json && l.json.message === 'E_AUTH') record('PASS', '4c. staff_change_password(garbage token) -> E_AUTH');
+    else record('FAIL', '4c. staff_change_password(garbage token) -> E_AUTH', describe(l));
+  }
+}
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_token: tok, ...args } });
@@ -294,7 +332,7 @@ if (!phase2) {
 {
   const r = await call('GET', '/');
   const expectedTables = new Set(['courses', 'students', 'enrollments', 'enrollment_results']);
-  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : [])]);
+  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : []), ...(phase5 ? ['staff_login', 'staff_change_password'] : [])]);
   if (r.status === 200 && r.json && r.json.paths) {
     const paths = Object.keys(r.json.paths).filter((p) => p !== '/');
     const extraTables = paths.filter((p) => !p.startsWith('/rpc/') && !expectedTables.has(p.slice(1)));

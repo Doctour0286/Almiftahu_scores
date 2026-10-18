@@ -32,3 +32,5 @@ done
 for f in tests/sql/phase[1-9]_*.test.sql; do [ -e "$f" ] || continue; echo ">> $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
 echo ">> tests/sql/phase0_lockdown.test.sql (after Phase 1 migrations)"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f tests/sql/phase0_lockdown.test.sql
 for f in tests/tools/concurrency_exam.sh; do [ -e "$f" ] || continue; echo ">> $f"; DB="$DB" "$f"; done
+# Phase H: recreate the old (insecure 050) production state in a clone, prove the holes, upgrade with 060, re-test.
+echo ">> tests/tools/hardening_upgrade_path.sh"; SRC="$DB" tests/tools/hardening_upgrade_path.sh
