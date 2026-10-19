@@ -4,6 +4,8 @@ import { loadSession, saveSession, type Session } from './session';
 import { dicts, errKey, isRtl, type Lang } from './i18n';
 import Scores from './Scores';
 import Roster from './Roster';
+import Lessons from './Lessons';
+import TodayView from './Today';
 
 type T = (k: string) => string;
 type Enrollment = { enrollment_id: string; course_name: string; course_name_ar: string | null; days: number[] | null };
@@ -96,12 +98,24 @@ function ChangePin({ s, t, done }: { s: Session; t: T; done: () => void }) {
 }
 
 function StudentHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
+  const [tab, setTab] = useState<'today' | 'courses'>('today');
+  return (
+    <section className="stack">
+      <div className="bar"><strong>{t('welcome')}, {s.name}</strong><button className="link" onClick={() => { rpc('student_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button></div>
+      <nav className="tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'today'} onClick={() => setTab('today')}>{t('today')}</button>
+        <button role="tab" aria-selected={tab === 'courses'} onClick={() => setTab('courses')}>{t('coursesTab')}</button>
+      </nav>
+      {tab === 'today' ? <TodayView token={s.token} t={t} onAuthError={out} /> : <StudentCourses s={s} t={t} out={out} />}
+    </section>);
+}
+
+function StudentCourses({ s, t, out }: { s: Session; t: T; out: () => void }) {
   const [rows, setRows] = useState<Enrollment[] | null>(null); const a = useAction(t);
   useEffect(() => { a.run(async () => { setRows((await rpc<{ enrollments: Enrollment[] }>('student_me', { p_token: s.token })).enrollments); }); }, []);
   useEffect(() => { if (a.err === t('eAuth')) out(); }, [a.err]);
   return (
     <section className="stack">
-      <div className="bar"><strong>{t('welcome')}, {s.name}</strong><button className="link" onClick={() => { rpc('student_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button></div>
       {a.err && <p className="err" role="alert">{a.err}</p>}
       {rows === null && !a.err && <p>{t('loading')}</p>}
       {rows?.length === 0 && <p>{t('noCourses')}</p>}
@@ -114,7 +128,7 @@ function StudentHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
 }
 
 function StaffHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
-  const [tab, setTab] = useState<'scores' | 'roster' | 'access'>('scores');
+  const [tab, setTab] = useState<'scores' | 'roster' | 'lessons' | 'access'>('scores');
   return (
     <section className="stack">
       <div className="bar"><strong>{t('welcome')}, {s.name}</strong>
@@ -122,9 +136,10 @@ function StaffHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
       <nav className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'scores'} onClick={() => setTab('scores')}>{t('scores')}</button>
         <button role="tab" aria-selected={tab === 'roster'} onClick={() => setTab('roster')}>{t('roster')}</button>
+        <button role="tab" aria-selected={tab === 'lessons'} onClick={() => setTab('lessons')}>{t('lessons')}</button>
         <button role="tab" aria-selected={tab === 'access'} onClick={() => setTab('access')}>{t('access')}</button>
       </nav>
-      {tab === 'scores' ? <Scores token={s.token} t={t} onAuthError={out} /> : tab === 'roster' ? <Roster token={s.token} t={t} onAuthError={out} /> : <StudentAccess s={s} t={t} out={out} />}
+      {tab === 'scores' ? <Scores token={s.token} t={t} onAuthError={out} /> : tab === 'roster' ? <Roster token={s.token} t={t} onAuthError={out} /> : tab === 'lessons' ? <Lessons token={s.token} t={t} onAuthError={out} /> : <StudentAccess s={s} t={t} out={out} />}
     </section>);
 }
 
