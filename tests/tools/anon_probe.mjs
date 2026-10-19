@@ -279,6 +279,26 @@ let phase6 = false;
     if (o.status === 200) record('PASS', '4d. student_logout(garbage) is harmless'); else record('FAIL', '4d. student_logout(garbage) is harmless', describe(o));
   }
 }
+// Phase 7 (063): lessons, review engine, keys
+let phase7 = false;
+{
+  const r = await call('POST', '/rpc/student_wird_today', { body: { p_token: 'probe-garbage' } });
+  phase7 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE7 === '1';
+  record('PASS', `4. Phase 7 Wird RPCs ${phase7 ? 'are installed and are probed below' : 'are not installed (063 not applied)'}`);
+  if (phase7) {
+    Object.assign(adminCalls, { admin_save_lesson: { p_lesson_id: null, p_course_id: ZERO, p_data: {} }, admin_publish_lesson: { p_lesson_id: ZERO, p_publish: true }, admin_list_lessons: { p_course_id: ZERO } });
+    for (const [fn, args] of [['student_wird_today', {}], ['student_wird_answer', { p_item_id: ZERO, p_response: 'x' }], ['student_progress', {}]]) {
+      const x = await call('POST', `/rpc/${fn}`, { body: { p_token: 'probe-garbage', ...args } });
+      if (x.status === 400 && x.json && x.json.message === 'E_AUTH') record('PASS', `4e. ${fn}(garbage token) -> E_AUTH`);
+      else record('FAIL', `4e. ${fn}(garbage token) -> E_AUTH`, describe(x));
+    }
+    for (const t of ['lesson_items', 'lessons', 'review_state', 'study_events', 'activity_days', 'keys_earned']) {
+      const x = await call('GET', `/${t}?select=*&limit=1`, {});
+      if (x.status >= 200 && x.status < 300 && Array.isArray(x.json) && x.json.length > 0) record('FAIL', `4e. public.${t} is not readable`, 'DATA RETURNED');
+      else record('PASS', `4e. ${t} is not readable`);
+    }
+  }
+}
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_token: tok, ...args } });
@@ -352,7 +372,7 @@ if (!phase2) {
 {
   const r = await call('GET', '/');
   const expectedTables = new Set(['courses', 'students', 'enrollments', 'enrollment_results']);
-  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : []), ...(phase5 ? ['staff_login', 'staff_change_password'] : []), ...(phase6 ? ['student_login', 'student_logout', 'student_change_pin', 'student_me'] : [])]);
+  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : []), ...(phase5 ? ['staff_login', 'staff_change_password'] : []), ...(phase6 ? ['student_login', 'student_logout', 'student_change_pin', 'student_me'] : []), ...(phase7 ? ['student_wird_today', 'student_wird_answer', 'student_progress'] : [])]);
   if (r.status === 200 && r.json && r.json.paths) {
     const paths = Object.keys(r.json.paths).filter((p) => p !== '/');
     const extraTables = paths.filter((p) => !p.startsWith('/rpc/') && !expectedTables.has(p.slice(1)));
