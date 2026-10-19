@@ -30,3 +30,5 @@ button.link { background:none; color:var(--brand); padding:6px; min-height:36px;
 .row2 { display:grid; grid-template-columns:1fr 6.5rem; gap:12px; } .grow { flex:1; min-width:0; }
 .mark { width:4.5rem; text-align:center; font-size:1.1rem; font-variant-numeric:tabular-nums; }
 .tick { width:1.2rem; text-align:center; font-weight:700; color:var(--brand); } .tick.bad,.tick.error { color:var(--err); }
+button.ghost { background:none; color:var(--brand); border:1px solid var(--line); } .list li.off { opacity:.6; }
+.tabs button { font-size:.9rem; padding:10px 6px; }

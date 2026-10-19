@@ -7,6 +7,7 @@ const en: Dict = {
   welcome: 'Welcome', mustChange: 'Please choose your own PIN before you continue.', myCourses: 'My courses', marks: 'Lesson marks', noCourses: 'You are not enrolled in a course yet.',
   access: 'Student access', search: 'Search students', issue: 'Issue PIN', issued: 'Give these to the student. The PIN is shown only once.', done: 'Done',
   scores: 'Scores', course: 'Course', unit: 'Day', outOf: 'out of', saved: 'Saved', blankHint: 'Leave blank if not marked', lessonPct: 'Lessons', noScored: 'No course with lesson scores yet.', noStudents: 'No active students in this course.', eRange: 'Enter a whole number in range.',
+  roster: 'Roster', addStudent: 'Add a student', nameEn: 'Name (English)', nameAr: 'Name (Arabic, optional)', add: 'Add', dupName: 'A student with this name already exists. Check it is not a duplicate.', inactive: 'inactive', deactivate: 'Deactivate', reactivate: 'Reactivate', approve: 'Approve for exam', approved: 'Approved ✓', confirmOff: 'Deactivate this student? Their history is kept and they leave the public portal.',
   eAuth: 'Wrong details. Please check and try again.', eLocked: 'Too many tries. Please wait a few minutes.', eNet: 'No connection. Please try again.',
   eConfig: 'This app is not configured yet.', eValidation: 'Please check what you typed.', eGeneric: 'Something went wrong. Please try again.', loading: 'Loading…',
 };
@@ -20,6 +21,7 @@ const ar: Dict = {
   welcome: 'مرحبًا', mustChange: 'يرجى اختيار رقمك السري قبل المتابعة.', myCourses: 'مقرراتي', marks: 'درجات الدروس', noCourses: 'لم تُسجَّل في أي مقرر بعد.',
   access: 'دخول الطلاب', search: 'ابحث عن طالب', issue: 'إصدار رقم سري', issued: 'سلّم هذه البيانات للطالب. يظهر الرقم السري مرة واحدة فقط.', done: 'تم',
   scores: 'الدرجات', course: 'المقرر', unit: 'اليوم', outOf: 'من', saved: 'تم الحفظ', blankHint: 'اتركه فارغًا إن لم يُصحَّح', lessonPct: 'الدروس', noScored: 'لا يوجد مقرر بدرجات دروس بعد.', noStudents: 'لا يوجد طلاب نشطون في هذا المقرر.', eRange: 'أدخل عددًا صحيحًا ضمن النطاق.',
+  roster: 'القائمة', addStudent: 'إضافة طالب', nameEn: 'الاسم (بالإنجليزية)', nameAr: 'الاسم (بالعربية، اختياري)', add: 'إضافة', dupName: 'يوجد طالب بهذا الاسم. تأكد أنه ليس مكررًا.', inactive: 'غير نشط', deactivate: 'إيقاف', reactivate: 'إعادة تفعيل', approve: 'اعتماد للاختبار', approved: 'معتمد ✓', confirmOff: 'إيقاف هذا الطالب؟ يبقى سجله ويخرج من الواجهة العامة.',
   eAuth: 'البيانات غير صحيحة. حاول مرة أخرى.', eLocked: 'محاولات كثيرة. انتظر بضع دقائق.', eNet: 'لا يوجد اتصال. حاول مرة أخرى.',
   eConfig: 'لم يتم إعداد التطبيق بعد.', eValidation: 'تحقق مما كتبته.', eGeneric: 'حدث خطأ. حاول مرة أخرى.', loading: '…جارٍ التحميل',
 };

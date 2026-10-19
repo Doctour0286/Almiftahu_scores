@@ -3,6 +3,7 @@ import { rpc, rpcOk, RpcError, configured } from './rpc';
 import { loadSession, saveSession, type Session } from './session';
 import { dicts, errKey, isRtl, type Lang } from './i18n';
 import Scores from './Scores';
+import Roster from './Roster';
 
 type T = (k: string) => string;
 type Enrollment = { enrollment_id: string; course_name: string; course_name_ar: string | null; days: number[] | null };
@@ -113,16 +114,17 @@ function StudentHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
 }
 
 function StaffHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
-  const [tab, setTab] = useState<'scores' | 'access'>('scores');
+  const [tab, setTab] = useState<'scores' | 'roster' | 'access'>('scores');
   return (
     <section className="stack">
       <div className="bar"><strong>{t('welcome')}, {s.name}</strong>
         <button className="link" onClick={() => { rpc('teacher_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button></div>
       <nav className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'scores'} onClick={() => setTab('scores')}>{t('scores')}</button>
+        <button role="tab" aria-selected={tab === 'roster'} onClick={() => setTab('roster')}>{t('roster')}</button>
         <button role="tab" aria-selected={tab === 'access'} onClick={() => setTab('access')}>{t('access')}</button>
       </nav>
-      {tab === 'scores' ? <Scores token={s.token} t={t} onAuthError={out} /> : <StudentAccess s={s} t={t} out={out} />}
+      {tab === 'scores' ? <Scores token={s.token} t={t} onAuthError={out} /> : tab === 'roster' ? <Roster token={s.token} t={t} onAuthError={out} /> : <StudentAccess s={s} t={t} out={out} />}
     </section>);
 }
 
