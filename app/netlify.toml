@@ -1,0 +1,9 @@
+# For a SEPARATE Netlify site (Base directory = app) used as the Phase 1 preview. The root netlify.toml, which
+# serves the live site, is untouched until the P2 cut-over (PRD v4 D-63).
+[build]
+  command = "npm run build"
+  publish = "dist"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
