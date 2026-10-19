@@ -15,8 +15,8 @@
 
 | Phase | Scope | State |
 |---|---|---|
-| **H** Hardening | `060` staff/audio security, `061` `exam_get_result` fix, test repairs, probe extension | ✅ built and tested locally · ⬜ **owner must apply** (§14) |
-| **P1** Foundation | `app/` shell, session auth for staff and students, roster, scores, cohort board | ⬜ |
+| **H** Hardening | `060` staff/audio security, `061` `exam_get_result` fix, test repairs, probe extension | ✅ **DONE.** Applied on production 19 Oct 2026; anon probe 203 passed / 0 failed; admin account created and `staff_login` verified |
+| **P1** Foundation | `app/` shell, session auth for staff and students, roster, scores, cohort board | 🟡 **in progress** (session 21): P1.1 skeleton ✅, P1.2 `062` student auth ✅ (local tests green; **owner must apply `062`**), P1.3 staff login ✅, student home ✅, teacher "Student access" (issue code + PIN) ✅. **Remaining:** P1.4 roster / score grid / leaderboard parity, P1.5 Netlify preview site (`app/netlify.toml` ready), typed RPC types, Playwright smoke test |
 | **P2** Daily Wird | lessons, review engine, keys, streaks, offline; **cut-over** | ⬜ |
 | **P3** Recitation | Storage-backed audio, teacher review queue | ⬜ |
 | **P4** Teacher & admin tools | inbox, attendance, nudges, staff/student admin, analytics | ⬜ |
@@ -75,7 +75,7 @@
 | **D-64** | Clients never read tables. Every read and write is an RPC with a token or an enrollment+code credential. | Matches `005` |
 | **D-65** | Review scheduling is a fixed ladder of 6 boxes, default intervals **1, 3, 7, 14, 30, 60 days**, in `system_params`. A correct recall moves up a box; a miss drops to box 1. | Research found expanding and uniform spacing perform about the same; simple beats clever |
 | **D-66** | The engagement ethics rules in §6.6 are binding requirements, not suggestions. | Avoid compulsion and "gamified obligation" |
-| **D-67** 🟡 | Defaults pending owner answer on student ages: cohort boards of 10–15, rank private by default, weekly reset, Friday is a rest day (all configurable per course). For students under about 13 the board is off by default. | Safe defaults |
+| **D-67** ✅ (owner said "Go", 19 Oct: safe defaults adopted; revisit when ages are known) | Defaults: cohort boards of 10–15, rank private by default, weekly reset, Friday is a rest day (all configurable per course). For students under about 13 the board is off by default. | Safe defaults |
 | **D-68** | Recitation is teacher-graded plus a student self-check mode. No automatic speech recognition in v1. | Cost, accuracy (word-level tools miss vowel errors), and the teacher stays the authority |
 | **D-69** | Audio lives in a private Supabase Storage bucket (`recitations`), referenced by path; signed URLs; max 90 s and 1.5 MB per clip; Opus where the browser supports it. | Stop storing recordings as table text |
 | **D-70** | PWA with an offline cache. **Practice** quizzes may be graded on the device and never touch official scores. **Graded** work (exam, scored quiz) is server-side only. | Weak connectivity without leaking answer keys |
@@ -92,6 +92,8 @@
 | O-23 | Create the `recitations` Storage bucket (P3) | Guide provided in P3 |
 | O-24 | Video lessons? | Audio + text; optional unlisted-link embeds |
 | O-25 | Should a teacher see only their assigned courses? | Yes, enforced in P4 (`assigned_courses` already exists) |
+| O-26 | The public portal exposes 28 students' full names and scores to anyone (probe step 3). Full names, first names only, or nicknames? | Full names stay as today until you decide; the new app's public board will be **off** (D-67) |
+| O-27 | Hausa UI text in `app/src/i18n.ts` is a first pass | Needs review by a native Hausa speaker before pilot |
 
 ## 5. Information architecture
 
@@ -324,3 +326,4 @@ js/ src/                  frozen legacy (removed at P2 cut-over)
 | # | Date | Work |
 |---|---|---|
 | 20 | 2026-10-18 | Surveyed repo, upload and database design; web research on engagement, spaced retrieval, hifz method, Nigerian mobile context; found F-1…F-8; built `060`, `061`, repaired tests, added `phase5_hardening.test.sql`, `hardening_upgrade_path.sh`, extended probe; wrote this PRD. **Local verification only:** the SQL suite ran on a local PostgreSQL 16; nothing was applied to Supabase; the live site and the extended probe were not run against production. |
+| 21 | 2026-10-19 | Phase H verified on production (probe 203/0). Built `062_student_auth.sql` (student login by code + PIN, own session table, isolation tests in `phase6_student_auth.test.sql`), extended the anon probe (step 4d), scaffolded `app/` (Vite + React + TS, plain `fetch` RPC client, no SDK; staff login, student login with forced first-login PIN change, student home, teacher "Student access"). Typecheck and build clean; JS 72 KB gzip. **Not done:** roster/score grid/leaderboard (P1.4), Netlify preview (P1.5); the app was built but not run against a live Supabase from the sandbox. |
