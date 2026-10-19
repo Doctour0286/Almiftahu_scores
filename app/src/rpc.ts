@@ -25,3 +25,14 @@ export async function rpcOk<T = Record<string, never>>(fn: string, args: Record<
   if (r && r.ok === false) throw new RpcError(r.error ?? 'E_UNKNOWN', r.detail);
   return r as unknown as T;
 }
+
+// Public-by-design tables only (policy read_courses, probe step 3). Staff and student data always goes through rpc().
+export async function readPublic<T>(path: string): Promise<T> {
+  if (!configured) throw new RpcError('E_CONFIG');
+  const headers: Record<string, string> = { apikey: KEY!, Accept: 'application/json' };
+  if (KEY!.startsWith('eyJ')) headers.Authorization = `Bearer ${KEY}`;
+  let res: Response;
+  try { res = await fetch(`${URL_}/rest/v1/${path}`, { headers }); } catch { throw new RpcError('E_NETWORK'); }
+  if (!res.ok) throw new RpcError(`HTTP_${res.status}`);
+  return (await res.json()) as T;
+}

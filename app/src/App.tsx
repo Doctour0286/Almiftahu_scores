@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { rpc, rpcOk, RpcError, configured } from './rpc';
 import { loadSession, saveSession, type Session } from './session';
 import { dicts, errKey, isRtl, type Lang } from './i18n';
+import Scores from './Scores';
 
 type T = (k: string) => string;
 type Enrollment = { enrollment_id: string; course_name: string; course_name_ar: string | null; days: number[] | null };
@@ -106,12 +107,26 @@ function StudentHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
       {rows?.map((r) => (
         <article className="card" key={r.enrollment_id}>
           <h2>{r.course_name}</h2>
-          <p className="muted">{t('marks')}: {(r.days ?? []).reduce((x, y) => x + (y || 0), 0)}</p>
+          <p className="muted">{t('marks')}: {(r.days ?? []).reduce((x, y) => x + (y > 0 ? y : 0), 0)}</p>
         </article>))}
     </section>);
 }
 
 function StaffHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
+  const [tab, setTab] = useState<'scores' | 'access'>('scores');
+  return (
+    <section className="stack">
+      <div className="bar"><strong>{t('welcome')}, {s.name}</strong>
+        <button className="link" onClick={() => { rpc('teacher_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button></div>
+      <nav className="tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'scores'} onClick={() => setTab('scores')}>{t('scores')}</button>
+        <button role="tab" aria-selected={tab === 'access'} onClick={() => setTab('access')}>{t('access')}</button>
+      </nav>
+      {tab === 'scores' ? <Scores token={s.token} t={t} onAuthError={out} /> : <StudentAccess s={s} t={t} out={out} />}
+    </section>);
+}
+
+function StudentAccess({ s, t, out }: { s: Session; t: T; out: () => void }) {
   const [list, setList] = useState<Student[] | null>(null); const [q, setQ] = useState('');
   const [issued, setIssued] = useState<{ name: string; login_code: string; pin: string } | null>(null); const a = useAction(t);
   useEffect(() => { a.run(async () => { setList(await rpc<Student[]>('admin_list_students_all', { p_token: s.token })); }); }, []);
@@ -123,9 +138,6 @@ function StaffHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
   });
   return (
     <section className="stack">
-      <div className="bar"><strong>{t('welcome')}, {s.name}</strong>
-        <button className="link" onClick={() => { rpc('teacher_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button></div>
-      <h2>{t('access')}</h2>
       <input type="search" placeholder={t('search')} value={q} onChange={(e) => setQ(e.target.value)} />
       {a.err && <p className="err" role="alert">{a.err}</p>}
       {list === null && !a.err && <p>{t('loading')}</p>}

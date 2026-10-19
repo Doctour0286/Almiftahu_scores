@@ -6,18 +6,20 @@ const en: Dict = {
   email: 'Email', password: 'Password', code: 'Login code', pin: 'PIN', newPin: 'New PIN (4–6 digits)', oldPin: 'Current PIN', savePin: 'Save new PIN',
   welcome: 'Welcome', mustChange: 'Please choose your own PIN before you continue.', myCourses: 'My courses', marks: 'Lesson marks', noCourses: 'You are not enrolled in a course yet.',
   access: 'Student access', search: 'Search students', issue: 'Issue PIN', issued: 'Give these to the student. The PIN is shown only once.', done: 'Done',
+  scores: 'Scores', course: 'Course', unit: 'Day', outOf: 'out of', saved: 'Saved', blankHint: 'Leave blank if not marked', lessonPct: 'Lessons', noScored: 'No course with lesson scores yet.', noStudents: 'No active students in this course.', eRange: 'Enter a whole number in range.',
   eAuth: 'Wrong details. Please check and try again.', eLocked: 'Too many tries. Please wait a few minutes.', eNet: 'No connection. Please try again.',
   eConfig: 'This app is not configured yet.', eValidation: 'Please check what you typed.', eGeneric: 'Something went wrong. Please try again.', loading: 'Loading…',
 };
 const ha: Dict = {
   ...en, student: 'Ni ɗalibi ne', staff: 'Ni ma’aikaci ne', back: 'Baya', signIn: 'Shiga', signOut: 'Fita', email: 'Imel', password: 'Kalmar sirri',
-  code: 'Lambar shiga', welcome: 'Barka da zuwa', myCourses: 'Darussana', marks: 'Maki', loading: 'Ana lodawa…',
+  scores: 'Maki', course: 'Darasi', saved: 'An adana', code: 'Lambar shiga', welcome: 'Barka da zuwa', myCourses: 'Darussana', marks: 'Maki', loading: 'Ana lodawa…',
 };
 const ar: Dict = {
   title: 'معهد مفتاح العلم', student: 'أنا طالب', staff: 'أنا من الهيئة', back: 'رجوع', signIn: 'دخول', signOut: 'خروج', email: 'البريد الإلكتروني', password: 'كلمة المرور',
   code: 'رمز الدخول', pin: 'الرقم السري', newPin: 'رقم سري جديد (٤–٦ أرقام)', oldPin: 'الرقم السري الحالي', savePin: 'حفظ الرقم السري',
   welcome: 'مرحبًا', mustChange: 'يرجى اختيار رقمك السري قبل المتابعة.', myCourses: 'مقرراتي', marks: 'درجات الدروس', noCourses: 'لم تُسجَّل في أي مقرر بعد.',
   access: 'دخول الطلاب', search: 'ابحث عن طالب', issue: 'إصدار رقم سري', issued: 'سلّم هذه البيانات للطالب. يظهر الرقم السري مرة واحدة فقط.', done: 'تم',
+  scores: 'الدرجات', course: 'المقرر', unit: 'اليوم', outOf: 'من', saved: 'تم الحفظ', blankHint: 'اتركه فارغًا إن لم يُصحَّح', lessonPct: 'الدروس', noScored: 'لا يوجد مقرر بدرجات دروس بعد.', noStudents: 'لا يوجد طلاب نشطون في هذا المقرر.', eRange: 'أدخل عددًا صحيحًا ضمن النطاق.',
   eAuth: 'البيانات غير صحيحة. حاول مرة أخرى.', eLocked: 'محاولات كثيرة. انتظر بضع دقائق.', eNet: 'لا يوجد اتصال. حاول مرة أخرى.',
   eConfig: 'لم يتم إعداد التطبيق بعد.', eValidation: 'تحقق مما كتبته.', eGeneric: 'حدث خطأ. حاول مرة أخرى.', loading: '…جارٍ التحميل',
 };
