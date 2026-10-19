@@ -259,6 +259,26 @@ let phase5 = false;
     else record('FAIL', '4c. staff_change_password(garbage token) -> E_AUTH', describe(l));
   }
 }
+// Phase 6 (062): student login by code + PIN
+let phase6 = false;
+{
+  const r = await call('POST', '/rpc/student_me', { body: { p_token: 'probe-garbage' } });
+  phase6 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE6 === '1';
+  record('PASS', `4. Phase 6 student auth RPCs ${phase6 ? 'are installed and are probed below' : 'are not installed (062 not applied)'}`);
+  if (phase6) {
+    adminCalls.admin_set_student_pin = { p_student_id: 'probe-none', p_pin: null };
+    const l = await call('POST', '/rpc/student_login', { body: { p_code: 'MIF-PROBE0', p_pin: '0000' } });
+    if (l.status === 200 && l.json && l.json.ok === false) record('PASS', '4d. student_login(unknown code) -> ok:false');
+    else record('FAIL', '4d. student_login(unknown code) -> ok:false', describe(l));
+    for (const [fn, args] of [['student_me', {}], ['student_change_pin', { p_old: '0000', p_new: '1111' }]]) {
+      const x = await call('POST', `/rpc/${fn}`, { body: { p_token: 'probe-garbage', ...args } });
+      if (x.status === 400 && x.json && x.json.message === 'E_AUTH') record('PASS', `4d. ${fn}(garbage token) -> E_AUTH`);
+      else record('FAIL', `4d. ${fn}(garbage token) -> E_AUTH`, describe(x));
+    }
+    const o = await call('POST', '/rpc/student_logout', { body: { p_token: 'probe-garbage' } });
+    if (o.status === 200) record('PASS', '4d. student_logout(garbage) is harmless'); else record('FAIL', '4d. student_logout(garbage) is harmless', describe(o));
+  }
+}
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_token: tok, ...args } });
@@ -332,7 +352,7 @@ if (!phase2) {
 {
   const r = await call('GET', '/');
   const expectedTables = new Set(['courses', 'students', 'enrollments', 'enrollment_results']);
-  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : []), ...(phase5 ? ['staff_login', 'staff_change_password'] : [])]);
+  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : []), ...(phase5 ? ['staff_login', 'staff_change_password'] : []), ...(phase6 ? ['student_login', 'student_logout', 'student_change_pin', 'student_me'] : [])]);
   if (r.status === 200 && r.json && r.json.paths) {
     const paths = Object.keys(r.json.paths).filter((p) => p !== '/');
     const extraTables = paths.filter((p) => !p.startsWith('/rpc/') && !expectedTables.has(p.slice(1)));

@@ -176,7 +176,7 @@ begin
   select string_agg(p.proname, ', ') into v_bad
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and p.prokind = 'f' and has_function_privilege('anon', p.oid, 'execute')
-     and p.proname !~ '^(admin_|teacher_|exam_|staff_|get_certificate$|verify_certificate$)';
+     and p.proname !~ '^(admin_|teacher_|exam_|staff_|student_|get_certificate$|verify_certificate$)';
   assert v_bad is null, 'unexpected anon-executable functions: ' || coalesce(v_bad, '');
   -- and every admin_* function that anon can run takes a token as its first argument
   select string_agg(p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')', ', ') into v_bad

@@ -42,7 +42,7 @@ begin
          = 16, 'anon must execute all 16 Phase-0 RPCs';
   assert not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
           where p.prokind = 'f' and has_function_privilege('anon', p.oid, 'EXECUTE')
-            and p.proname !~ '^(admin_|teacher_|exam_|staff_|get_certificate$|verify_certificate$)'),
+            and p.proname !~ '^(admin_|teacher_|exam_|staff_|student_|get_certificate$|verify_certificate$)'),
          'anon can execute a public function outside the known families';
   assert not has_schema_privilege('anon', 'private', 'USAGE'), 'no anon usage on private';
 end $$;
