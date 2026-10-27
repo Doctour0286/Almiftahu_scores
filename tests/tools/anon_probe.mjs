@@ -299,6 +299,13 @@ let phase7 = false;
     }
   }
 }
+// Phase 8 (064): lesson editor RPCs
+{
+  const r = await call('POST', '/rpc/admin_get_lesson', { body: { p_token: 'probe-garbage', p_lesson_id: ZERO } });
+  const phase8 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE8 === '1';
+  record('PASS', `4. Phase 8 lesson admin RPCs ${phase8 ? 'are installed and are probed below' : 'are not installed (064 not applied)'}`);
+  if (phase8) Object.assign(adminCalls, { admin_get_lesson: { p_lesson_id: ZERO }, admin_delete_lesson: { p_lesson_id: ZERO }, admin_set_lesson_position: { p_lesson_id: ZERO, p_position: 1 } });
+}
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_token: tok, ...args } });
