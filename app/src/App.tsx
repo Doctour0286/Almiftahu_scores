@@ -15,6 +15,8 @@ export default function App() {
   const [lang, setLang] = useState<Lang>('en');
   const [session, setSession] = useState<Session | null>(loadSession);
   const [view, setView] = useState<'home' | 'staff' | 'student'>('home');
+  const [offline, setOffline] = useState(!navigator.onLine);
+  useEffect(() => { const f = () => setOffline(!navigator.onLine); window.addEventListener('online', f); window.addEventListener('offline', f); return () => { window.removeEventListener('online', f); window.removeEventListener('offline', f); }; }, []);
   const t: T = (k) => dicts[lang][k] ?? dicts.en[k] ?? k;
   useEffect(() => { document.documentElement.lang = lang; document.documentElement.dir = isRtl(lang) ? 'rtl' : 'ltr'; }, [lang]);
   const update = (s: Session | null) => { saveSession(s); setSession(s); if (!s) setView('home'); };
@@ -27,6 +29,7 @@ export default function App() {
           <option value="en">English</option><option value="ha">Hausa</option><option value="ar">العربية</option>
         </select>
       </header>
+      {offline && <p className="banner" role="status">{t('offline')}</p>}
       {!configured && <p className="err" role="alert">{t('eConfig')}</p>}
       {session?.kind === 'staff' && <StaffHome s={session} t={t} out={() => update(null)} />}
       {session?.kind === 'student' && (session.mustChange
