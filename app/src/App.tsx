@@ -5,7 +5,7 @@ import { dicts, errKey, isRtl, type Lang } from './i18n';
 import Scores from './Scores';
 import Roster from './Roster';
 import Lessons from './Lessons';
-import TodayView from './Today';
+import StudentApp from './Student';
 
 type T = (k: string) => string;
 type Enrollment = { enrollment_id: string; course_name: string; course_name_ar: string | null; days: number[] | null };
@@ -34,7 +34,7 @@ export default function App() {
       {session?.kind === 'staff' && <StaffHome s={session} t={t} out={() => update(null)} />}
       {session?.kind === 'student' && (session.mustChange
         ? <ChangePin s={session} t={t} done={() => update({ ...session, mustChange: false })} />
-        : <StudentHome s={session} t={t} out={() => update(null)} />)}
+        : <StudentApp s={session} t={t} out={() => update(null)} />)}
       {!session && view === 'home' && (
         <div className="stack">
           <button className="big" onClick={() => setView('student')}>{t('student')}</button>
@@ -98,36 +98,6 @@ function ChangePin({ s, t, done }: { s: Session; t: T; done: () => void }) {
       {a.err && <p className="err" role="alert">{a.err}</p>}
       <button className="big" disabled={a.busy}>{t('savePin')}</button>
     </form>);
-}
-
-function StudentHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
-  const [tab, setTab] = useState<'today' | 'courses'>('today');
-  return (
-    <section className="stack">
-      <div className="bar"><strong>{t('welcome')}, {s.name}</strong><button className="link" onClick={() => { rpc('student_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button></div>
-      <nav className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'today'} onClick={() => setTab('today')}>{t('today')}</button>
-        <button role="tab" aria-selected={tab === 'courses'} onClick={() => setTab('courses')}>{t('coursesTab')}</button>
-      </nav>
-      {tab === 'today' ? <TodayView token={s.token} t={t} onAuthError={out} /> : <StudentCourses s={s} t={t} out={out} />}
-    </section>);
-}
-
-function StudentCourses({ s, t, out }: { s: Session; t: T; out: () => void }) {
-  const [rows, setRows] = useState<Enrollment[] | null>(null); const a = useAction(t);
-  useEffect(() => { a.run(async () => { setRows((await rpc<{ enrollments: Enrollment[] }>('student_me', { p_token: s.token })).enrollments); }); }, []);
-  useEffect(() => { if (a.err === t('eAuth')) out(); }, [a.err]);
-  return (
-    <section className="stack">
-      {a.err && <p className="err" role="alert">{a.err}</p>}
-      {rows === null && !a.err && <p>{t('loading')}</p>}
-      {rows?.length === 0 && <p>{t('noCourses')}</p>}
-      {rows?.map((r) => (
-        <article className="card" key={r.enrollment_id}>
-          <h2>{r.course_name}</h2>
-          <p className="muted">{t('marks')}: {(r.days ?? []).reduce((x, y) => x + (y > 0 ? y : 0), 0)}</p>
-        </article>))}
-    </section>);
 }
 
 function StaffHome({ s, t, out }: { s: Session; t: T; out: () => void }) {

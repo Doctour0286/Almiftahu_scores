@@ -13,6 +13,7 @@ const en: Dict = {
   edit: 'Edit', confirmDelete: 'Delete this lesson?', titleAr: 'Lesson title (Arabic, optional)', typeRecall: 'Typed answer', typeMcq: 'Multiple choice', promptLbl: 'Question', answerLbl: 'Correct answer', altsLbl: 'Other accepted answers (separate with ;)', optionLbl: 'Option', correctOpt: 'Correct option', addItem: 'Add question', lockedNote: 'Students have started this lesson, so its questions are locked. You can still change the title and text.', import: 'Import lessons', importRun: 'Import as drafts', lessonsLbl: 'lessons',
   importHelp: 'One lesson per "# Title | Arabic title" line.\n"> text" lines are the lesson text.\n"prompt || answer || other answers ; more" is a typed question.\n"? prompt || correct | wrong | wrong" is multiple choice (the first option is the correct one; they are shuffled).',
   offline: 'You are offline. Some things will not work until you reconnect.',
+  greet: 'Assalamu alaykum', todaysWird: "Today's Wird", wirdBlurb: 'About 12 minutes. Revise, learn, review.', cont: 'Continue', startWird: 'Start', yourKeys: 'Your keys', thisWeek: 'This week', fridayRest: 'Friday is rest', keysTab: 'Keys', me: 'Me', noKeysYet: 'Finish a lesson and keep revising it to earn your first key.',
   eAuth: 'Wrong details. Please check and try again.', eLocked: 'Too many tries. Please wait a few minutes.', eNet: 'No connection. Please try again.',
   eConfig: 'This app is not configured yet.', eValidation: 'Please check what you typed.', eGeneric: 'Something went wrong. Please try again.', loading: 'Loading…',
 };
@@ -32,6 +33,7 @@ const ar: Dict = {
   edit: 'تعديل', confirmDelete: 'حذف هذا الدرس؟', titleAr: 'عنوان الدرس بالعربية (اختياري)', typeRecall: 'إجابة مكتوبة', typeMcq: 'اختيار من متعدد', promptLbl: 'السؤال', answerLbl: 'الإجابة الصحيحة', altsLbl: 'إجابات أخرى مقبولة (افصل بـ ؛)', optionLbl: 'خيار', correctOpt: 'الخيار الصحيح', addItem: 'إضافة سؤال', lockedNote: 'بدأ الطلاب هذا الدرس، لذا أسئلته مقفلة. يمكنك تعديل العنوان والنص.', import: 'استيراد دروس', importRun: 'استيراد كمسودات', lessonsLbl: 'دروس',
   importHelp: 'درس لكل سطر "# العنوان | العنوان بالعربية".\nأسطر "> نص" هي نص الدرس.\n"السؤال || الإجابة || إجابات أخرى ؛ أخرى" سؤال كتابي.\n"? السؤال || الصحيح | خطأ | خطأ" اختيار من متعدد (الأول هو الصحيح ويُخلط الترتيب).',
   offline: 'أنت غير متصل. لن تعمل بعض الأشياء حتى تعود.',
+  greet: 'السلام عليكم', todaysWird: 'ورد اليوم', wirdBlurb: 'نحو ١٢ دقيقة. راجع، تعلّم، ثم راجع.', cont: 'متابعة', startWird: 'ابدأ', yourKeys: 'مفاتيحك', thisWeek: 'هذا الأسبوع', fridayRest: 'الجمعة راحة', keysTab: 'المفاتيح', me: 'أنا', noKeysYet: 'أكمل درسًا وواصل مراجعته لتحصل على أول مفتاح.',
   eAuth: 'البيانات غير صحيحة. حاول مرة أخرى.', eLocked: 'محاولات كثيرة. انتظر بضع دقائق.', eNet: 'لا يوجد اتصال. حاول مرة أخرى.',
   eConfig: 'لم يتم إعداد التطبيق بعد.', eValidation: 'تحقق مما كتبته.', eGeneric: 'حدث خطأ. حاول مرة أخرى.', loading: '…جارٍ التحميل',
 };
