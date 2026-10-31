@@ -14,6 +14,8 @@ const en: Dict = {
   importHelp: 'One lesson per "# Title | Arabic title" line.\n"> text" lines are the lesson text.\n"prompt || answer || other answers ; more" is a typed question.\n"? prompt || correct | wrong | wrong" is multiple choice (the first option is the correct one; they are shuffled).',
   offline: 'You are offline. Some things will not work until you reconnect.',
   greet: 'Assalamu alaykum', todaysWird: "Today's Wird", wirdBlurb: 'About 12 minutes. Revise, learn, review.', cont: 'Continue', startWird: 'Start', yourKeys: 'Your keys', thisWeek: 'This week', fridayRest: 'Friday is rest', keysTab: 'Keys', me: 'Me', noKeysYet: 'Finish a lesson and keep revising it to earn your first key.',
+  inbox: 'Inbox', activeToday: 'students practised today', needsYou: 'Needs you', allGood: 'Everyone is on track.', notStarted: 'not started', daysAgo: 'days ago', copyNudge: 'Copy message', copied: 'Copied ✓', repairList: 'Needs repair', nudgeMsg: 'Assalamu alaykum {name}, we missed you. Your Wird is waiting. Just ten minutes today, in shā’ Allāh.',
+  needsRevision: 'A key needs revision to stay bright.',
   eAuth: 'Wrong details. Please check and try again.', eLocked: 'Too many tries. Please wait a few minutes.', eNet: 'No connection. Please try again.',
   eConfig: 'This app is not configured yet.', eValidation: 'Please check what you typed.', eGeneric: 'Something went wrong. Please try again.', loading: 'Loading…',
 };
@@ -34,6 +36,8 @@ const ar: Dict = {
   importHelp: 'درس لكل سطر "# العنوان | العنوان بالعربية".\nأسطر "> نص" هي نص الدرس.\n"السؤال || الإجابة || إجابات أخرى ؛ أخرى" سؤال كتابي.\n"? السؤال || الصحيح | خطأ | خطأ" اختيار من متعدد (الأول هو الصحيح ويُخلط الترتيب).',
   offline: 'أنت غير متصل. لن تعمل بعض الأشياء حتى تعود.',
   greet: 'السلام عليكم', todaysWird: 'ورد اليوم', wirdBlurb: 'نحو ١٢ دقيقة. راجع، تعلّم، ثم راجع.', cont: 'متابعة', startWird: 'ابدأ', yourKeys: 'مفاتيحك', thisWeek: 'هذا الأسبوع', fridayRest: 'الجمعة راحة', keysTab: 'المفاتيح', me: 'أنا', noKeysYet: 'أكمل درسًا وواصل مراجعته لتحصل على أول مفتاح.',
+  inbox: 'الوارد', activeToday: 'طلاب راجعوا اليوم', needsYou: 'يحتاجون إليك', allGood: 'الجميع على ما يرام.', notStarted: 'لم يبدأ', daysAgo: 'أيام مضت', copyNudge: 'نسخ الرسالة', copied: 'تم النسخ ✓', repairList: 'يحتاجون تصحيحًا', nudgeMsg: 'السلام عليكم {name}، افتقدناك. وردك ينتظرك. عشر دقائق فقط اليوم إن شاء الله.',
+  needsRevision: 'مفتاح يحتاج مراجعة ليبقى لامعًا.',
   eAuth: 'البيانات غير صحيحة. حاول مرة أخرى.', eLocked: 'محاولات كثيرة. انتظر بضع دقائق.', eNet: 'لا يوجد اتصال. حاول مرة أخرى.',
   eConfig: 'لم يتم إعداد التطبيق بعد.', eValidation: 'تحقق مما كتبته.', eGeneric: 'حدث خطأ. حاول مرة أخرى.', loading: '…جارٍ التحميل',
 };

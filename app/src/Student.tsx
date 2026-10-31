@@ -6,7 +6,7 @@ import type { Session } from './session';
 
 type T = (k: string) => string;
 type Today = { items_done_today: number; sabqi: unknown[]; sabaq: { items: unknown[] } | null; manzil: unknown[] };
-type Progress = { keys: { lesson_id: string; title: string }[]; lessons_total: number; week_days_done: number; week_days_expected: number };
+type Progress = { week: { day: string; done: boolean; rest: boolean; today: boolean }[]; keys: { lesson_id: string; title: string; overdue: boolean }[]; lessons_total: number; week_days_done: number; week_days_expected: number };
 type Enrollment = { enrollment_id: string; course_name: string; days: number[] | null };
 
 const Key = ({ size = 26 }: { size?: number }) => (
@@ -50,9 +50,10 @@ export default function StudentApp({ s, t, out }: { s: Session; t: T; out: () =>
             <button className="gold" disabled={remaining === 0} onClick={() => setSession(true)}>{today.items_done_today > 0 ? t('cont') : t('startWird')}</button></div>
         </section>
         <h4>{t('yourKeys')} <small>{prog.keys.length} / {prog.lessons_total}</small></h4>
-        <div className="shelf">{Array.from({ length: Math.min(Math.max(prog.lessons_total, prog.keys.length), 6) }, (_, i) => <div key={i} className={`keycell ${i < prog.keys.length ? 'on' : ''}`}><Key /></div>)}</div>
+        <div className="shelf">{Array.from({ length: Math.min(Math.max(prog.lessons_total, prog.keys.length), 6) }, (_, i) => <div key={i} className={`keycell ${i < prog.keys.length ? (prog.keys[i].overdue ? 'on dim' : 'on') : ''}`} title={prog.keys[i]?.overdue ? t('needsRevision') : undefined}><Key /></div>)}</div>
+        {prog.keys.some((k) => k.overdue) && <p className="muted">{t('needsRevision')}</p>}
         <h4>{t('thisWeek')} <small>{prog.week_days_done} / {prog.week_days_expected} · {t('fridayRest')}</small></h4>
-        <div className="dots">{Array.from({ length: prog.week_days_expected }, (_, i) => <span key={i} className={i < prog.week_days_done ? 'on' : ''} />)}</div>
+        <div className="week">{prog.week.map((w) => <div key={w.day} className={w.today ? 'today' : ''}><span className={`${w.done ? 'on' : ''} ${w.rest ? 'rest' : ''}`} /><small>{new Date(w.day + 'T12:00:00').toLocaleDateString(document.documentElement.lang || 'en', { weekday: 'narrow' })}</small></div>)}</div>
       </>))}
       {tab === 'keys' && <KeysView prog={prog} t={t} />}
       {tab === 'courses' && <Courses s={s} t={t} out={out} />}

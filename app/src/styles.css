@@ -54,3 +54,6 @@ h4 { margin:18px 0 8px; font-size:.95rem; } h4 small { color:var(--muted); font-
 nav.bottom { position:fixed; left:0; right:0; bottom:0; display:flex; background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom,0px); }
 nav.bottom button { flex:1; background:none; color:var(--muted); border-radius:0; min-height:64px; font-size:.8rem; } nav.bottom button[aria-selected="true"] { color:var(--brand); box-shadow:inset 0 3px 0 var(--brand); }
 @media (min-width:700px) { nav.bottom { max-width:560px; margin:0 auto; } }
+.keycell.on.dim { opacity:.45; }
+.week { display:flex; gap:6px; } .week>div { flex:1; text-align:center; } .week span { display:block; width:28px; height:28px; margin:0 auto 4px; border-radius:50%; border:2px solid var(--line); }
+.week span.on { background:var(--brand); border-color:var(--brand); } .week span.rest { background:var(--line); border-style:dashed; } .week .today span { box-shadow:0 0 0 3px var(--gold); } .week small { color:var(--muted); font-size:.72rem; }
