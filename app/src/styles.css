@@ -57,3 +57,13 @@ nav.bottom button { flex:1; background:none; color:var(--muted); border-radius:0
 .keycell.on.dim { opacity:.45; }
 .week { display:flex; gap:6px; } .week>div { flex:1; text-align:center; } .week span { display:block; width:28px; height:28px; margin:0 auto 4px; border-radius:50%; border:2px solid var(--line); }
 .week span.on { background:var(--brand); border-color:var(--brand); } .week span.rest { background:var(--line); border-style:dashed; } .week .today span { box-shadow:0 0 0 3px var(--gold); } .week small { color:var(--muted); font-size:.72rem; }
+/* ---- Staff screens: same language as the student app ---- */
+.hero.slim { flex-direction:column; align-items:stretch; gap:6px; padding:16px 20px; border-radius:22px; } .hero.slim p { margin:0; } .hero .num { display:flex; align-items:baseline; gap:8px; } .hero .num b { font-size:2.2rem; line-height:1; } .hero .num span { opacity:.85; font-size:1.1rem; }
+.bar-track { height:8px; border-radius:99px; background:rgba(255,255,255,.25); overflow:hidden; } .bar-track i { display:block; height:100%; background:#e0b84a; border-radius:99px; }
+.plist { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.prow { display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:10px 12px; }
+.av { flex:none; width:40px; height:40px; border-radius:50%; background:var(--brand); color:var(--brand-ink); display:flex; align-items:center; justify-content:center; font-weight:700; }
+.who { flex:1; min-width:0; display:flex; flex-direction:column; } .who b { font-weight:600; overflow-wrap:anywhere; } .who .ar { color:var(--muted); font-size:.95rem; font-family:"Noto Naskh Arabic",system-ui,serif; text-align:start; }
+.chip.soft { background:var(--line); color:var(--ink); font-weight:600; font-size:.72rem; white-space:nowrap; }
+details>summary { cursor:pointer; list-style:revert; margin:6px 0 8px; } details[open]>summary { margin-bottom:8px; }
+nav.bottom button { font-size:.74rem; padding:0 2px; }

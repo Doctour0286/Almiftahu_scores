@@ -15,15 +15,24 @@ export default function InboxView({ token, t, onAuthError }: { token: string; t:
   };
   if (err) return <p className="err" role="alert">{err}</p>;
   if (!d) return <p>{t('loading')}</p>;
+  const stopped = d.inactive.filter((p) => p.days_since != null); const fresh = d.inactive.filter((p) => p.days_since == null);
+  const pct = d.summary.enrolled ? Math.round((d.summary.active_today / d.summary.enrolled) * 100) : 0;
+  const row = (p: Person, chip: string) => (
+    <li key={p.student_id} className="prow">
+      <span className="av" aria-hidden="true">{p.name.trim().charAt(0).toUpperCase()}</span>
+      <span className="who"><b>{p.name}</b>{p.name_ar && <span className="ar" dir="rtl" lang="ar">{p.name_ar}</span>}</span>
+      <span className="chip soft">{chip}</span>
+      <button className="ghost sm" onClick={() => nudge(p)} aria-label={t('copyNudge')}>{copied === p.student_id ? '✓' : t('copyShort')}</button>
+    </li>);
   return (
     <div className="stack">
-      <section className="hero"><div className="hero-b"><h3>{d.summary.active_today} / {d.summary.enrolled}</h3><p>{t('activeToday')}</p></div></section>
-      <h4>{t('needsYou')} <small>{d.inactive.length}</small></h4>
+      <section className="hero slim"><div className="num"><b>{d.summary.active_today}</b><span>/ {d.summary.enrolled}</span></div><p>{t('activeToday')}</p>
+        <div className="bar-track" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div></section>
       {d.inactive.length === 0 && <p className="ok">{t('allGood')}</p>}
-      <ul className="list">{d.inactive.map((p) => (
-        <li key={p.student_id}><span className="grow">{p.name}{p.name_ar ? ` · ${p.name_ar}` : ''}<small className="muted"> · {p.days_since == null ? t('notStarted') : `${p.days_since} ${t('daysAgo')}`}</small></span>
-          <button className="ghost" onClick={() => nudge(p)}>{copied === p.student_id ? t('copied') : t('copyNudge')}</button></li>))}</ul>
+      {stopped.length > 0 && <><h4>{t('stopped')} <small>{stopped.length}</small></h4><ul className="plist">{stopped.map((p) => row(p, `${p.days_since} ${t('daysAgo')}`))}</ul></>}
+      {fresh.length > 0 && <details open={stopped.length === 0}><summary><h4 style={{ display: 'inline' }}>{t('notStartedGroup')} <small>{fresh.length}</small></h4></summary>
+        <ul className="plist">{fresh.map((p) => row(p, t('notStarted')))}</ul></details>}
       {d.repair.length > 0 && <><h4>{t('repairList')} <small>{d.repair.length}</small></h4>
-        <ul className="list">{d.repair.map((p) => <li key={p.student_id}><span className="grow">{p.name}</span><small className="muted">{p.items}</small></li>)}</ul></>}
+        <ul className="plist">{d.repair.map((p) => (<li key={p.student_id} className="prow"><span className="av" aria-hidden="true">{p.name.trim().charAt(0).toUpperCase()}</span><span className="who"><b>{p.name}</b></span><span className="chip soft">{p.items}</span></li>))}</ul></>}
     </div>);
 }

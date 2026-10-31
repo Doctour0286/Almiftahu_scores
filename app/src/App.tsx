@@ -107,14 +107,10 @@ function StaffHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
     <section className="stack">
       <div className="bar"><strong>{t('welcome')}, {s.name}</strong>
         <button className="link" onClick={() => { rpc('teacher_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button></div>
-      <nav className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'inbox'} onClick={() => setTab('inbox')}>{t('inbox')}</button>
-        <button role="tab" aria-selected={tab === 'scores'} onClick={() => setTab('scores')}>{t('scores')}</button>
-        <button role="tab" aria-selected={tab === 'roster'} onClick={() => setTab('roster')}>{t('roster')}</button>
-        <button role="tab" aria-selected={tab === 'lessons'} onClick={() => setTab('lessons')}>{t('lessons')}</button>
-        <button role="tab" aria-selected={tab === 'access'} onClick={() => setTab('access')}>{t('access')}</button>
+      <div className="app-s">{tab === 'inbox' ? <InboxView token={s.token} t={t} onAuthError={out} /> : tab === 'scores' ? <Scores token={s.token} t={t} onAuthError={out} /> : tab === 'roster' ? <Roster token={s.token} t={t} onAuthError={out} /> : tab === 'lessons' ? <Lessons token={s.token} t={t} onAuthError={out} /> : <StudentAccess s={s} t={t} out={out} />}</div>
+      <nav className="bottom" role="tablist">
+        {([['inbox','inbox'],['scores','scores'],['roster','roster'],['lessons','lessons'],['access','navAccess']] as const).map(([id, k]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{t(k)}</button>)}
       </nav>
-      {tab === 'inbox' ? <InboxView token={s.token} t={t} onAuthError={out} /> : tab === 'scores' ? <Scores token={s.token} t={t} onAuthError={out} /> : tab === 'roster' ? <Roster token={s.token} t={t} onAuthError={out} /> : tab === 'lessons' ? <Lessons token={s.token} t={t} onAuthError={out} /> : <StudentAccess s={s} t={t} out={out} />}
     </section>);
 }
 

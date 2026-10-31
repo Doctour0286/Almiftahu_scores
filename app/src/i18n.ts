@@ -16,6 +16,7 @@ const en: Dict = {
   greet: 'Assalamu alaykum', todaysWird: "Today's Wird", wirdBlurb: 'About 12 minutes. Revise, learn, review.', cont: 'Continue', startWird: 'Start', yourKeys: 'Your keys', thisWeek: 'This week', fridayRest: 'Friday is rest', keysTab: 'Keys', me: 'Me', noKeysYet: 'Finish a lesson and keep revising it to earn your first key.',
   inbox: 'Inbox', activeToday: 'students practised today', needsYou: 'Needs you', allGood: 'Everyone is on track.', notStarted: 'not started', daysAgo: 'days ago', copyNudge: 'Copy message', copied: 'Copied ✓', repairList: 'Needs repair', nudgeMsg: 'Assalamu alaykum {name}, we missed you. Your Wird is waiting. Just ten minutes today, in shā’ Allāh.',
   needsRevision: 'A key needs revision to stay bright.',
+  navAccess: 'Access', stopped: 'Stopped practising', notStartedGroup: 'Not started yet', copyShort: 'Copy',
   eAuth: 'Wrong details. Please check and try again.', eLocked: 'Too many tries. Please wait a few minutes.', eNet: 'No connection. Please try again.',
   eConfig: 'This app is not configured yet.', eValidation: 'Please check what you typed.', eGeneric: 'Something went wrong. Please try again.', loading: 'Loading…',
 };
@@ -38,6 +39,7 @@ const ar: Dict = {
   greet: 'السلام عليكم', todaysWird: 'ورد اليوم', wirdBlurb: 'نحو ١٢ دقيقة. راجع، تعلّم، ثم راجع.', cont: 'متابعة', startWird: 'ابدأ', yourKeys: 'مفاتيحك', thisWeek: 'هذا الأسبوع', fridayRest: 'الجمعة راحة', keysTab: 'المفاتيح', me: 'أنا', noKeysYet: 'أكمل درسًا وواصل مراجعته لتحصل على أول مفتاح.',
   inbox: 'الوارد', activeToday: 'طلاب راجعوا اليوم', needsYou: 'يحتاجون إليك', allGood: 'الجميع على ما يرام.', notStarted: 'لم يبدأ', daysAgo: 'أيام مضت', copyNudge: 'نسخ الرسالة', copied: 'تم النسخ ✓', repairList: 'يحتاجون تصحيحًا', nudgeMsg: 'السلام عليكم {name}، افتقدناك. وردك ينتظرك. عشر دقائق فقط اليوم إن شاء الله.',
   needsRevision: 'مفتاح يحتاج مراجعة ليبقى لامعًا.',
+  navAccess: 'الدخول', stopped: 'توقفوا عن المراجعة', notStartedGroup: 'لم يبدؤوا بعد', copyShort: 'نسخ',
   eAuth: 'البيانات غير صحيحة. حاول مرة أخرى.', eLocked: 'محاولات كثيرة. انتظر بضع دقائق.', eNet: 'لا يوجد اتصال. حاول مرة أخرى.',
   eConfig: 'لم يتم إعداد التطبيق بعد.', eValidation: 'تحقق مما كتبته.', eGeneric: 'حدث خطأ. حاول مرة أخرى.', loading: '…جارٍ التحميل',
 };
