@@ -36,3 +36,46 @@ export async function readPublic<T>(path: string): Promise<T> {
   if (!res.ok) throw new RpcError(`HTTP_${res.status}`);
   return (await res.json()) as T;
 }
+
+// ---- Student accounts (Supabase Auth). The password goes only to Supabase's auth endpoint; our RPCs never see it.
+const authErr = (status: number, body: any): RpcError => {
+  if (status === 429) return new RpcError('E_LOCKED');
+  if (status === 422 || body?.error_code === 'weak_password' || body?.error_code === 'same_password') return new RpcError('E_VALIDATION', body?.msg ?? body?.message);
+  if (status === 400 || status === 401) return new RpcError('E_AUTH');
+  return new RpcError('E_UNKNOWN');
+};
+export type AuthSession = { access_token: string; user: { email?: string } };
+export async function authPassword(email: string, password: string): Promise<AuthSession> {
+  if (!configured) throw new RpcError('E_CONFIG');
+  let res: Response;
+  try { res = await fetch(`${URL_}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: KEY! }, body: JSON.stringify({ email: email.trim().toLowerCase(), password }) }); }
+  catch { throw new RpcError('E_NETWORK'); }
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw authErr(res.status, body);
+  return body as AuthSession;
+}
+export async function authUpdate(access: string, change: { password?: string; email?: string }): Promise<void> {
+  let res: Response;
+  try { res = await fetch(`${URL_}/auth/v1/user`, { method: 'PUT', headers: { 'Content-Type': 'application/json', apikey: KEY!, Authorization: `Bearer ${access}` }, body: JSON.stringify(change) }); }
+  catch { throw new RpcError('E_NETWORK'); }
+  if (!res.ok) throw authErr(res.status, await res.json().catch(() => null));
+}
+// an RPC that needs the student's Supabase login (JWT) instead of our session token
+export async function rpcAs<T = any>(fn: string, access: string, args: Record<string, unknown> = {}): Promise<T> {
+  let res: Response;
+  try { res = await fetch(`${URL_}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: KEY!, Authorization: `Bearer ${access}` }, body: JSON.stringify(args) }); }
+  catch { throw new RpcError('E_NETWORK'); }
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new RpcError(body?.message ?? `HTTP_${res.status}`, body?.details);
+  return body as T;
+}
+export async function callFunction<T = any>(name: string, args: Record<string, unknown>): Promise<T> {
+  if (!configured) throw new RpcError('E_CONFIG');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', apikey: KEY! };
+  if (KEY!.startsWith('eyJ')) headers.Authorization = `Bearer ${KEY}`;
+  let res: Response;
+  try { res = await fetch(`${URL_}/functions/v1/${name}`, { method: 'POST', headers, body: JSON.stringify(args) }); } catch { throw new RpcError('E_NETWORK'); }
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new RpcError(body?.error ?? (res.status === 404 ? 'E_SERVICE' : `HTTP_${res.status}`), body?.detail);
+  return body as T;
+}

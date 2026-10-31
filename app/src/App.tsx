@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { rpc, rpcOk, RpcError, configured } from './rpc';
+import { rpc, rpcOk, rpcAs, authPassword, authUpdate, callFunction, RpcError, configured } from './rpc';
 import { loadSession, saveSession, type Session } from './session';
 import { dicts, errKey, isRtl, type Lang } from './i18n';
 import Scores from './Scores';
@@ -34,7 +34,7 @@ export default function App() {
       {!configured && <p className="err" role="alert">{t('eConfig')}</p>}
       {session?.kind === 'staff' && <StaffHome s={session} t={t} out={() => update(null)} />}
       {session?.kind === 'student' && (session.mustChange
-        ? <ChangePin s={session} t={t} done={() => update({ ...session, mustChange: false })} />
+        ? <ChangePassword s={session} t={t} done={() => update({ ...session, mustChange: false })} />
         : <StudentApp s={session} t={t} out={() => update(null)} />)}
       {!session && view === 'home' && (
         <div className="stack">
@@ -73,31 +73,37 @@ function StaffLogin({ t, back, ok }: { t: T; back: () => void; ok: (s: Session) 
 }
 
 function StudentLogin({ t, back, ok }: { t: T; back: () => void; ok: (s: Session) => void }) {
-  const [code, setCode] = useState(''); const [pin, setPin] = useState(''); const a = useAction(t);
+  const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const a = useAction(t);
   const submit = (e: FormEvent) => { e.preventDefault(); a.run(async () => {
-    const r = await rpcOk<{ token: string; student: { name: string; must_change: boolean } }>('student_login', { p_code: code, p_pin: pin });
-    ok({ kind: 'student', token: r.token, name: r.student.name, mustChange: r.student.must_change });
+    const au = await authPassword(email, pw);
+    const r = await rpcAs<{ token: string; student: { name: string; must_change: boolean } }>('student_session', au.access_token);
+    ok({ kind: 'student', token: r.token, name: r.student.name, mustChange: r.student.must_change, access: au.access_token, email: au.user.email });
   }); };
   return (
     <form className="card stack" onSubmit={submit}>
-      <label>{t('code')}<input value={code} onChange={(e) => setCode(e.target.value)} autoCapitalize="characters" autoComplete="username" required /></label>
-      <label>{t('pin')}<input type="password" inputMode="numeric" pattern="[0-9]*" autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value)} required /></label>
+      <label>{t('email')}<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+      <label>{t('password')}<input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required /></label>
       {a.err && <p className="err" role="alert">{a.err}</p>}
       <button className="big" disabled={a.busy}>{t('signIn')}</button>
       <button type="button" className="link" onClick={back}>{t('back')}</button>
     </form>);
 }
 
-function ChangePin({ s, t, done }: { s: Session; t: T; done: () => void }) {
-  const [oldPin, setOld] = useState(''); const [newPin, setNew] = useState(''); const a = useAction(t);
-  const submit = (e: FormEvent) => { e.preventDefault(); a.run(async () => { await rpcOk('student_change_pin', { p_token: s.token, p_old: oldPin, p_new: newPin }); done(); }); };
+function ChangePassword({ s, t, done }: { s: Session; t: T; done: () => void }) {
+  const [pw, setPw] = useState(''); const [pw2, setPw2] = useState(''); const a = useAction(t);
+  const submit = (e: FormEvent) => { e.preventDefault(); a.run(async () => {
+    if (pw.length < 8) throw new RpcError('E_VALIDATION');
+    if (pw !== pw2) throw new RpcError('E_MISMATCH');
+    await authUpdate(s.access!, { password: pw });
+    await rpcAs('student_password_changed', s.access!); done();
+  }); };
   return (
     <form className="card stack" onSubmit={submit}>
-      <p>{t('welcome')}, {s.name}. {t('mustChange')}</p>
-      <label>{t('oldPin')}<input type="password" inputMode="numeric" pattern="[0-9]*" value={oldPin} onChange={(e) => setOld(e.target.value)} required /></label>
-      <label>{t('newPin')}<input type="password" inputMode="numeric" pattern="[0-9]{4,6}" value={newPin} onChange={(e) => setNew(e.target.value)} required /></label>
+      <p>{t('welcome')}, {s.name}. {t('mustChangePw')}</p>
+      <label>{t('newPassword')}<input type="password" autoComplete="new-password" minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} required /></label>
+      <label>{t('repeatPassword')}<input type="password" autoComplete="new-password" minLength={8} value={pw2} onChange={(e) => setPw2(e.target.value)} required /></label>
       {a.err && <p className="err" role="alert">{a.err}</p>}
-      <button className="big" disabled={a.busy}>{t('savePin')}</button>
+      <button className="big" disabled={a.busy}>{t('savePassword')}</button>
     </form>);
 }
 
@@ -115,27 +121,34 @@ function StaffHome({ s, t, out }: { s: Session; t: T; out: () => void }) {
 }
 
 function StudentAccess({ s, t, out }: { s: Session; t: T; out: () => void }) {
-  const [list, setList] = useState<Student[] | null>(null); const [q, setQ] = useState('');
-  const [issued, setIssued] = useState<{ name: string; login_code: string; pin: string } | null>(null); const a = useAction(t);
-  useEffect(() => { a.run(async () => { setList(await rpc<Student[]>('admin_list_students_all', { p_token: s.token })); }); }, []);
+  const [list, setList] = useState<Student[] | null>(null); const [q, setQ] = useState(''); const [linked, setLinked] = useState<Set<string>>(new Set());
+  const [issued, setIssued] = useState<{ name: string; email: string; password: string } | null>(null); const a = useAction(t);
+  const load = () => a.run(async () => {
+    setList(await rpc<Student[]>('admin_list_students_all', { p_token: s.token }));
+    setLinked(new Set((await rpc<{ student_id: string }[]>('admin_list_student_accounts', { p_token: s.token }).catch(() => [])).map((x) => x.student_id)));
+  });
+  useEffect(() => { load(); }, []);
   useEffect(() => { if (a.err === t('eAuth')) out(); }, [a.err]);
   const shown = useMemo(() => (list ?? []).filter((x) => (x.name + ' ' + (x.name_ar ?? '')).toLowerCase().includes(q.toLowerCase())), [list, q]);
-  const issue = (st: Student) => a.run(async () => {
-    const r = await rpc<{ login_code: string; pin: string }>('admin_set_student_pin', { p_token: s.token, p_student_id: st.id });
-    setIssued({ name: st.name, login_code: r.login_code, pin: r.pin });
-  });
+  const issue = (st: Student) => { if (linked.has(st.id) && !window.confirm(t('confirmReset'))) return; a.run(async () => {
+    const r = await callFunction<{ email: string; password: string }>('issue-student', { teacher_token: s.token, student_id: st.id });
+    setIssued({ name: st.name, email: r.email, password: r.password }); setLinked((p) => new Set(p).add(st.id));
+  }); };
   return (
     <section className="stack">
       <input type="search" placeholder={t('search')} value={q} onChange={(e) => setQ(e.target.value)} />
       {a.err && <p className="err" role="alert">{a.err}</p>}
       {list === null && !a.err && <p>{t('loading')}</p>}
-      <ul className="list">{shown.map((x) => (
-        <li key={x.id}><span>{x.name}{x.name_ar ? ` · ${x.name_ar}` : ''}</span><button onClick={() => issue(x)} disabled={a.busy}>{t('issue')}</button></li>))}</ul>
+      <ul className="plist">{shown.map((x) => (
+        <li key={x.id} className="prow"><span className="av" aria-hidden="true">{x.name.trim().charAt(0).toUpperCase()}</span>
+          <span className="who"><b>{x.name}</b>{x.name_ar && <span className="ar" dir="rtl" lang="ar">{x.name_ar}</span>}</span>
+          {linked.has(x.id) && <span className="chip soft">{t('hasAccount')}</span>}
+          <button className="ghost sm" onClick={() => issue(x)} disabled={a.busy}>{linked.has(x.id) ? t('resetPw') : t('issue')}</button></li>))}</ul>
       {issued && (
         <div className="modal" role="dialog" aria-modal="true"><div className="card stack">
-          <h2>{issued.name}</h2><p>{t('issued')}</p>
-          <p className="cred"><span>{t('code')}</span><b>{issued.login_code}</b></p>
-          <p className="cred"><span>{t('pin')}</span><b>{issued.pin}</b></p>
+          <h2>{issued.name}</h2><p>{t('issuedPw')}</p>
+          <p className="cred"><span>{t('email')}</span><b style={{ letterSpacing: 0, fontSize: '1rem', overflowWrap: 'anywhere' }}>{issued.email}</b></p>
+          <p className="cred"><span>{t('password')}</span><b>{issued.password}</b></p>
           <button className="big" onClick={() => setIssued(null)}>{t('done')}</button>
         </div></div>)}
     </section>);

@@ -17,6 +17,9 @@ const en: Dict = {
   inbox: 'Inbox', activeToday: 'students practised today', needsYou: 'Needs you', allGood: 'Everyone is on track.', notStarted: 'not started', daysAgo: 'days ago', copyNudge: 'Copy message', copied: 'Copied ✓', repairList: 'Needs repair', nudgeMsg: 'Assalamu alaykum {name}, we missed you. Your Wird is waiting. Just ten minutes today, in shā’ Allāh.',
   needsRevision: 'A key needs revision to stay bright.',
   navAccess: 'Access', stopped: 'Stopped practising', notStartedGroup: 'Not started yet', copyShort: 'Copy',
+  mustChangePw: 'Please choose your own password before you continue.', newPassword: 'New password (8+ characters)', repeatPassword: 'Repeat the new password', savePassword: 'Save password', pwChanged: 'Password changed ✓',
+  realEmail: 'Your real email address', emailNote: 'We will send a confirmation link. Your login email changes only after you open it.', changeEmail: 'Change email', emailSent: 'Check your inbox for the confirmation link.', signInAgain: 'Please sign in again to change your account details.',
+  issuedPw: 'Give these to the student. The password is shown only once, and the student must change it at first sign-in.', confirmReset: 'This student already has an account. Set a new password and sign them out everywhere?', hasAccount: 'has account', resetPw: 'Reset password', eMismatch: 'The two passwords are different.', eService: 'The account service is not set up yet. See the setup guide.', eConflict: 'Could not create the account. Please try again.',
   eAuth: 'Wrong details. Please check and try again.', eLocked: 'Too many tries. Please wait a few minutes.', eNet: 'No connection. Please try again.',
   eConfig: 'This app is not configured yet.', eValidation: 'Please check what you typed.', eGeneric: 'Something went wrong. Please try again.', loading: 'Loading…',
 };
@@ -40,6 +43,9 @@ const ar: Dict = {
   inbox: 'الوارد', activeToday: 'طلاب راجعوا اليوم', needsYou: 'يحتاجون إليك', allGood: 'الجميع على ما يرام.', notStarted: 'لم يبدأ', daysAgo: 'أيام مضت', copyNudge: 'نسخ الرسالة', copied: 'تم النسخ ✓', repairList: 'يحتاجون تصحيحًا', nudgeMsg: 'السلام عليكم {name}، افتقدناك. وردك ينتظرك. عشر دقائق فقط اليوم إن شاء الله.',
   needsRevision: 'مفتاح يحتاج مراجعة ليبقى لامعًا.',
   navAccess: 'الدخول', stopped: 'توقفوا عن المراجعة', notStartedGroup: 'لم يبدؤوا بعد', copyShort: 'نسخ',
+  mustChangePw: 'يرجى اختيار كلمة مرور خاصة بك قبل المتابعة.', newPassword: 'كلمة مرور جديدة (٨ أحرف فأكثر)', repeatPassword: 'أعد كتابة كلمة المرور', savePassword: 'حفظ كلمة المرور', pwChanged: 'تم تغيير كلمة المرور ✓',
+  realEmail: 'بريدك الإلكتروني الحقيقي', emailNote: 'سنرسل رابط تأكيد. لا يتغير بريد الدخول إلا بعد فتح الرابط.', changeEmail: 'تغيير البريد', emailSent: 'تحقق من بريدك لفتح رابط التأكيد.', signInAgain: 'يرجى تسجيل الدخول مرة أخرى لتغيير بيانات حسابك.',
+  issuedPw: 'سلّم هذه البيانات للطالب. تظهر كلمة المرور مرة واحدة فقط، وعلى الطالب تغييرها عند أول دخول.', confirmReset: 'لهذا الطالب حساب. تعيين كلمة مرور جديدة وإنهاء جلساته؟', hasAccount: 'لديه حساب', resetPw: 'إعادة تعيين', eMismatch: 'كلمتا المرور مختلفتان.', eService: 'خدمة الحسابات غير مفعّلة بعد.', eConflict: 'تعذّر إنشاء الحساب. حاول مرة أخرى.',
   eAuth: 'البيانات غير صحيحة. حاول مرة أخرى.', eLocked: 'محاولات كثيرة. انتظر بضع دقائق.', eNet: 'لا يوجد اتصال. حاول مرة أخرى.',
   eConfig: 'لم يتم إعداد التطبيق بعد.', eValidation: 'تحقق مما كتبته.', eGeneric: 'حدث خطأ. حاول مرة أخرى.', loading: '…جارٍ التحميل',
 };
@@ -47,5 +53,5 @@ export const dicts: Record<Lang, Dict> = { en, ha, ar };
 export const isRtl = (l: Lang) => l === 'ar';
 export function errKey(code: string): string {
   if (code === 'E_AUTH') return 'eAuth'; if (code === 'E_LOCKED') return 'eLocked'; if (code === 'E_NETWORK') return 'eNet';
-  if (code === 'E_CONFIG') return 'eConfig'; if (code === 'E_VALIDATION') return 'eValidation'; return 'eGeneric';
+  if (code === 'E_CONFIG') return 'eConfig'; if (code === 'E_MISMATCH') return 'eMismatch'; if (code === 'E_SERVICE') return 'eService'; if (code === 'E_CONFLICT') return 'eConflict'; if (code === 'E_VALIDATION') return 'eValidation'; return 'eGeneric';
 }

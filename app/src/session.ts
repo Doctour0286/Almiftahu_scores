@@ -1,4 +1,4 @@
-export type Session = { kind: 'staff' | 'student'; token: string; name: string; role?: string; mustChange?: boolean };
+export type Session = { kind: 'staff' | 'student'; token: string; name: string; role?: string; mustChange?: boolean; access?: string; email?: string };
 const K = 'mif.session';
 export function loadSession(): Session | null {
   try { const s = sessionStorage.getItem(K); return s ? (JSON.parse(s) as Session) : null; } catch { return null; }

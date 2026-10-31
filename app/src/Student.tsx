@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { rpc, RpcError } from './rpc';
+import { rpc, authUpdate, RpcError } from './rpc';
 import { errKey } from './i18n';
 import TodayView from './Today';
 import type { Session } from './session';
@@ -57,7 +57,7 @@ export default function StudentApp({ s, t, out }: { s: Session; t: T; out: () =>
       </>))}
       {tab === 'keys' && <KeysView prog={prog} t={t} />}
       {tab === 'courses' && <Courses s={s} t={t} out={out} />}
-      {tab === 'me' && (<div className="card stack"><h2>{s.name}</h2><button className="ghost" onClick={() => { rpc('student_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button></div>)}
+      {tab === 'me' && <Account s={s} t={t} out={out} />}
       <nav className="bottom" role="tablist">{nav('today', t('today'))}{nav('keys', t('keysTab'))}{nav('courses', t('coursesTab'))}{nav('me', t('me'))}</nav>
     </div>);
 }
@@ -76,4 +76,23 @@ function Courses({ s, t, out }: { s: Session; t: T; out: () => void }) {
   return (
     <div className="stack">{err && <p className="err" role="alert">{err}</p>}{rows === null && !err && <p>{t('loading')}</p>}{rows?.length === 0 && <p>{t('noCourses')}</p>}
       {rows?.map((r) => <article className="card" key={r.enrollment_id}><h2>{r.course_name}</h2><p className="muted">{t('marks')}: {(r.days ?? []).reduce((x, y) => x + (y > 0 ? y : 0), 0)}</p></article>)}</div>);
+}
+
+function Account({ s, t, out }: { s: Session; t: T; out: () => void }) {
+  const [pw, setPw] = useState(''); const [email, setEmail] = useState(''); const [msg, setMsg] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const run = async (f: () => Promise<void>, ok: string) => { setErr(''); setMsg(''); setBusy(true); try { await f(); setMsg(ok); } catch (e) { setErr(t(errKey(e instanceof RpcError ? e.code : ''))); } finally { setBusy(false); } };
+  const needLogin = !s.access;
+  return (
+    <div className="stack">
+      <div className="card stack"><h2>{s.name}</h2><p className="muted">{s.email}</p></div>
+      {needLogin ? <p className="muted">{t('signInAgain')}</p> : (<>
+        <form className="card stack" onSubmit={(e) => { e.preventDefault(); run(async () => { if (pw.length < 8) throw new RpcError('E_VALIDATION'); await authUpdate(s.access!, { password: pw }); setPw(''); }, t('pwChanged')); }}>
+          <label>{t('newPassword')}<input type="password" autoComplete="new-password" minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} required /></label>
+          <button disabled={busy}>{t('savePassword')}</button></form>
+        <form className="card stack" onSubmit={(e) => { e.preventDefault(); run(async () => { await authUpdate(s.access!, { email: email.trim().toLowerCase() }); setEmail(''); }, t('emailSent')); }}>
+          <label>{t('realEmail')}<input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+          <p className="muted">{t('emailNote')}</p><button disabled={busy}>{t('changeEmail')}</button></form></>)}
+      {msg && <p className="ok" role="status">{msg}</p>}{err && <p className="err" role="alert">{err}</p>}
+      <button className="ghost" onClick={() => { rpc('student_logout', { p_token: s.token }).catch(() => {}); out(); }}>{t('signOut')}</button>
+    </div>);
 }
