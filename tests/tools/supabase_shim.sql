@@ -29,3 +29,11 @@ insert into public.students(id, sn, name, days, bonus_units, active) values
 insert into public.app_settings values ('teacher_pin','test-pin-1234');
 -- Supabase ships this publication; the live app already subscribes to `students`.
 create publication supabase_realtime for table public.students;
+
+-- Minimal stand-ins for Supabase Auth, so migrations that call auth.uid() can be tested locally (session 27).
+create schema if not exists auth;
+create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+do $$ begin if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if; end $$;
+grant usage on schema auth to anon, authenticated, service_role;
+grant execute on function auth.uid() to anon, authenticated, service_role;
+grant usage on schema public to service_role;

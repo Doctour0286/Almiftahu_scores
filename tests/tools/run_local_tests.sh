@@ -10,7 +10,7 @@ psql -q -v ON_ERROR_STOP=1 -d "$DB" -f tests/tools/supabase_shim.sql
 # 005 (lockdown) and 006 (drop legacy) are applied AFTER the pre-lockdown tests: several of them assert the 000-004 state.
 # Phase 1+ migrations (010 and up) go in after the lockdown stage below: 005 revokes every function grant and re-grants only the 16 Phase-0 RPCs.
 for f in migrations/[0-9]*.sql; do case "$f" in migrations/005_*|migrations/006_*|migrations/0[1-9][0-9]_*) continue;; esac; echo ">> $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
-for f in tests/sql/*.test.sql; do case "$f" in tests/sql/phase0_lockdown.test.sql|tests/sql/phase[1-9]_*) continue;; esac; echo ">> $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
+for f in tests/sql/*.test.sql; do case "$f" in tests/sql/phase0_lockdown.test.sql|tests/sql/phase[1-9]*_*) continue;; esac; echo ">> $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
 echo ">> tests/tools/concurrency_sn.sh"; DB="$DB" tests/tools/concurrency_sn.sh
 # Lockdown: apply twice (idempotent), then the lockdown tests, then re-run the roster tests AS the locked-down database.
 echo ">> migrations/005_security_lockdown.sql (1st run)"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f migrations/005_security_lockdown.sql
@@ -29,7 +29,7 @@ for f in migrations/0[1-9][0-9]_*.sql; do
   echo ">> $f (1st run)"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"
   echo ">> $f (2nd run, idempotent)"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"
 done
-for f in tests/sql/phase[1-9]_*.test.sql; do [ -e "$f" ] || continue; echo ">> $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
+for f in tests/sql/phase[1-9]*_*.test.sql; do [ -e "$f" ] || continue; echo ">> $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
 echo ">> tests/sql/phase0_lockdown.test.sql (after Phase 1 migrations)"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f tests/sql/phase0_lockdown.test.sql
 for f in tests/tools/concurrency_exam.sh; do [ -e "$f" ] || continue; echo ">> $f"; DB="$DB" "$f"; done
 # Phase H: recreate the old (insecure 050) production state in a clone, prove the holes, upgrade with 060, re-test.

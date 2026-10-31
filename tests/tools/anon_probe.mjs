@@ -315,6 +315,22 @@ let phase9 = false;
   if (phase9) { for (const tok of [null, '', 'probe-garbage']) { const x = await call('POST', '/rpc/teacher_inbox', { body: { p_token: tok } });
     if (x.status === 400 && x.json && x.json.message === 'E_AUTH') record('PASS', `4f. teacher_inbox with ${tok === null ? 'no' : tok === '' ? 'empty' : 'random'} token -> E_AUTH`); else record('FAIL', `4f. teacher_inbox token ${JSON.stringify(tok)} -> E_AUTH`, describe(x)); } }
 }
+// Phase 10 (066): students sign in with email + password (Supabase Auth). The bridge and service functions must not be reachable with the public key.
+{
+  const r = await call('POST', '/rpc/admin_list_student_accounts', { body: { p_token: 'probe-garbage' } });
+  const phase10 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE10 === '1';
+  record('PASS', `4. Phase 10 student email/password bridge ${phase10 ? 'is installed and probed' : 'is not installed (066 not applied)'}`);
+  if (phase10) {
+    adminCalls.admin_list_student_accounts = {};
+    for (const [fn, args] of [['student_session', {}], ['student_password_changed', {}], ['service_student_link', { p_student_id: 'x' }], ['service_link_student', { p_student_id: 'x', p_auth_user_id: ZERO }]]) {
+      const x = await call('POST', `/rpc/${fn}`, { body: args });
+      if (x.status >= 200 && x.status < 300) record('FAIL', `4g. ${fn} is not callable with the public key`, `OPEN: ${describe(x)}`);
+      else record('PASS', `4g. ${fn} is not callable with the public key`);
+    }
+    const y = await call('GET', '/student_auth?select=*&limit=1', {});
+    if (y.status >= 200 && y.status < 300 && Array.isArray(y.json) && y.json.length > 0) record('FAIL', '4g. student_auth is not readable', 'DATA RETURNED'); else record('PASS', '4g. student_auth is not readable');
+  }
+}
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_token: tok, ...args } });
