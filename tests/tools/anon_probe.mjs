@@ -306,6 +306,15 @@ let phase7 = false;
   record('PASS', `4. Phase 8 lesson admin RPCs ${phase8 ? 'are installed and are probed below' : 'are not installed (064 not applied)'}`);
   if (phase8) Object.assign(adminCalls, { admin_get_lesson: { p_lesson_id: ZERO }, admin_delete_lesson: { p_lesson_id: ZERO }, admin_set_lesson_position: { p_lesson_id: ZERO, p_position: 1 } });
 }
+// Phase 9 (065): teacher inbox
+let phase9 = false;
+{
+  const r = await call('POST', '/rpc/teacher_inbox', { body: { p_token: 'probe-garbage' } });
+  phase9 = (r.status === 400 && r.json && r.json.message === 'E_AUTH') || process.env.PROBE_PHASE9 === '1';
+  record('PASS', `4. Phase 9 teacher inbox ${phase9 ? 'is installed and probed' : 'is not installed (065 not applied)'}`);
+  if (phase9) { for (const tok of [null, '', 'probe-garbage']) { const x = await call('POST', '/rpc/teacher_inbox', { body: { p_token: tok } });
+    if (x.status === 400 && x.json && x.json.message === 'E_AUTH') record('PASS', `4f. teacher_inbox with ${tok === null ? 'no' : tok === '' ? 'empty' : 'random'} token -> E_AUTH`); else record('FAIL', `4f. teacher_inbox token ${JSON.stringify(tok)} -> E_AUTH`, describe(x)); } }
+}
 for (const [fn, args] of Object.entries(adminCalls)) {
   for (const [label, tok] of [['no token', null], ['empty token', ''], ['random token', 'probe-' + Math.random().toString(36).slice(2)]]) {
     const r = await call('POST', `/rpc/${fn}`, { body: { p_token: tok, ...args } });
@@ -379,7 +388,7 @@ if (!phase2) {
 {
   const r = await call('GET', '/');
   const expectedTables = new Set(['courses', 'students', 'enrollments', 'enrollment_results']);
-  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : []), ...(phase5 ? ['staff_login', 'staff_change_password'] : []), ...(phase6 ? ['student_login', 'student_logout', 'student_change_pin', 'student_me'] : []), ...(phase7 ? ['student_wird_today', 'student_wird_answer', 'student_progress'] : [])]);
+  const expectedRpc = new Set(['teacher_login', 'teacher_logout', 'teacher_ping', 'teacher_change_pin', ...Object.keys(adminCalls), ...(phase2 ? STUDENT_RPCS : []), ...(phase4 ? ['verify_certificate'] : []), ...(phase5 ? ['staff_login', 'staff_change_password'] : []), ...(phase6 ? ['student_login', 'student_logout', 'student_change_pin', 'student_me'] : []), ...(phase7 ? ['student_wird_today', 'student_wird_answer', 'student_progress'] : []), ...(phase9 ? ['teacher_inbox'] : [])]);
   if (r.status === 200 && r.json && r.json.paths) {
     const paths = Object.keys(r.json.paths).filter((p) => p !== '/');
     const extraTables = paths.filter((p) => !p.startsWith('/rpc/') && !expectedTables.has(p.slice(1)));
